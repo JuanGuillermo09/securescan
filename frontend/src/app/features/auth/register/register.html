@@ -1,0 +1,77 @@
+<!-- ============================================================================
+     PLANTILLA REGISTRO
+     Misma tarjeta que login, con campo de nombre y confirmación de contraseña.
+============================================================================ -->
+
+<section class="auth-wrap">
+  <div class="card">
+    <h1>Crear cuenta</h1>
+    <p class="subtitle">Gratis. Tu historial de auditorías será privado.</p>
+
+    <form (ngSubmit)="submit()">
+      <label>
+        Nombre (opcional)
+        <input
+          type="text"
+          name="displayName"
+          [(ngModel)]="displayName"
+          placeholder="Tu nombre"
+          autocomplete="name"
+        />
+      </label>
+
+      <label>
+        Correo electrónico
+        <input
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          placeholder="tu@correo.com"
+          autocomplete="email"
+          required
+        />
+      </label>
+
+      <label>
+        Contraseña
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Mínimo 8 caracteres"
+          autocomplete="new-password"
+          required
+        />
+      </label>
+
+      <label>
+        Confirmar contraseña
+        <input
+          type="password"
+          name="password2"
+          [(ngModel)]="password2"
+          placeholder="Repite la contraseña"
+          autocomplete="new-password"
+          required
+        />
+      </label>
+
+      @if (password && password2 && password !== password2) {
+        <p class="error">Las contraseñas no coinciden.</p>
+      }
+
+      @if (error) {
+        <p class="error">{{ error }}</p>
+      }
+
+      <button class="btn primary" type="submit" [disabled]="!formValid">
+        {{ submitting ? 'Creando cuenta…' : 'Crear cuenta' }}
+      </button>
+    </form>
+
+    <p class="switch">
+      ¿Ya tienes cuenta?
+      <a routerLink="/login">Inicia sesión</a>
+    </p>
+  </div>
+</section>

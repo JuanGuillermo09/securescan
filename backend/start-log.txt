@@ -1,0 +1,6 @@
+
+> securescan-backend@1.0.0 start
+> tsx src/server.ts
+
+[2026-08-21T02:50:39.357Z] [INFO] SecureScan backend escuchando en http://localhost:3000
+[2026-08-21T02:55:07.721Z] [ERROR] Error no controlado en la API {"errno":-4058,"code":"ENOENT","syscall":"stat","path":"F:\\Proyectos\\SecureScan\\backend\\public\\index.html","expose":false,"statusCode":404,"status":404}

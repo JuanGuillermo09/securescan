@@ -1,0 +1,10 @@
+node_modules/
+# El build del frontend (dist/frontend) SÍ viaja por git para Render;
+# el resto del contenido de dist/ queda ignorado.
+dist/*
+!dist/frontend/
+dev.db
+dev.db-journal
+*.log
+.env
+reports/*.pdf

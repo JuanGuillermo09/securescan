@@ -1,0 +1,474 @@
+.detail {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.loading,
+.empty {
+  color: var(--text-muted);
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+h1 {
+  margin-bottom: 4px;
+}
+
+.target-url {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.meta {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 6px;
+}
+
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+.status-running {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.status-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.status-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.running-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.running-card p {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.alert,
+.warning-card {
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.alert {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.warning-card {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #fde047;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card h2 {
+  font-size: 1rem;
+  margin-bottom: 14px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-ring {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 10;
+}
+
+.ring-value {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 60px 60px;
+  stroke-dasharray: 339.29;
+  transition: stroke-dashoffset 0.8s ease;
+}
+
+.excellent .ring-value { stroke: #22c55e; }
+.good .ring-value      { stroke: #84cc16; }
+.fair .ring-value      { stroke: #eab308; }
+.poor .ring-value      { stroke: #f97316; }
+.critical .ring-value  { stroke: #ef4444; }
+
+.score-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-number {
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.score-grade {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.btn {
+  width: 100%;
+  text-align: center;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 0.15s ease;
+}
+
+.btn:hover {
+  filter: brightness(1.12);
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #04121f;
+}
+
+.btn.secondary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.total {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.severity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.severity-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-critical      { background: #b91c1c; }
+.dot-high          { background: #ea580c; }
+.dot-medium        { background: #ca8a04; }
+.dot-low           { background: #2563eb; }
+.dot-informational { background: #64748b; }
+
+.sev-name {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.sev-count {
+  font-weight: 700;
+}
+
+.tech-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tech-chip {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.version {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.category {
+  color: var(--text-muted);
+}
+
+.findings-section h2 {
+  margin-bottom: 4px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.findings-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.finding {
+  padding: 0;
+  overflow: hidden;
+}
+
+.finding.open {
+  border-color: var(--accent);
+}
+
+.finding-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.badge-critical      { background: #7f1d1d; color: #fecaca; }
+.badge-high          { background: #7c2d12; color: #fed7aa; }
+.badge-medium        { background: #713f12; color: #fef08a; }
+.badge-low           { background: #1e3a8a; color: #bfdbfe; }
+.badge-informational { background: #334155; color: #cbd5e1; }
+
+.finding-title {
+  flex: 1;
+}
+
+.ref-id {
+  color: var(--text-muted);
+  font-family: monospace;
+  margin-right: 8px;
+}
+
+.chevron {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.finding-body {
+  padding: 4px 16px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.confidence {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 12px 0;
+}
+
+.finding-body h4 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 14px 0 6px;
+}
+
+.evidence {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.refs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+
+.ref-tag {
+  display: inline-block;
+  min-width: 62px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  margin-right: 6px;
+}
+
+.ref-tag.owasp { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+.ref-tag.cwe   { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+.ref-tag.cve   { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+.ref-tag.iso   { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+
+.iso-note {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .audit-header {
+    flex-direction: column;
+  }
+}
+
+/* ── Adaptación a pantallas estrechas ──────────────────────────────────── */
+@media (max-width: 600px) {
+  .detail {
+    padding: 24px 12px 48px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  /* El anillo de puntuación se reduce manteniendo la proporción
+     gracias al viewBox del SVG. */
+  .score-ring {
+    width: 118px;
+    height: 118px;
+  }
+
+  .score-ring svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .score-number {
+    font-size: 1.7rem;
+  }
+
+  /* La cabecera de cada hallazgo permite partir el título en dos
+     líneas en lugar de desbordar. */
+  .finding-header {
+    flex-wrap: wrap;
+  }
+
+  .finding-title {
+    flex: 1 1 100%;
+    order: 3;
+    margin-top: 2px;
+  }
+
+  .running-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}

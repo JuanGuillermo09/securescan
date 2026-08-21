@@ -1,0 +1,225 @@
+<!-- ============================================================================
+     AUDIT-DETAIL — DASHBOARD DE RESULTADOS (HU-002, RF-023/RF-024)
+     Error de carga · estado en vivo (sondeo 2 s) · score con anillo SVG ·
+     distribución de riesgos · tecnologías · hallazgos expandibles · PDF.
+============================================================================ -->
+
+<!-- Estado de error: no se pudo cargar la auditoría -->
+<section class="detail" *ngIf="loadError; else content">
+  <div class="alert">{{ loadError }}</div>
+</section>
+
+<ng-template #content>
+  <section class="detail">
+    @if (!audit) {
+      <!-- Carga inicial del detalle -->
+      <div class="loading">Cargando auditoría…</div>
+    } @else {
+      <!-- Cabecera: dominio, URL objetivo, fechas e insignia de estado -->
+      <header class="audit-header">
+        <div>
+          <h1>{{ audit.domain }}</h1>
+          <a class="target-url" [href]="audit.url" target="_blank" rel="noopener noreferrer">{{
+            audit.url
+          }}</a>
+          <p class="meta">
+            Iniciada: {{ audit.startedAt | date: 'dd/MM/yyyy, HH:mm' }}
+            @if (audit.finishedAt) {
+              · Finalizada: {{ audit.finishedAt | date: 'dd/MM/yyyy, HH:mm' }}
+            }
+          </p>
+        </div>
+
+        <span class="status-badge" [class]="'status-' + audit.status.toLowerCase()">
+          {{ statusLabels[audit.status] }}
+        </span>
+      </header>
+
+      <!-- Tarjeta "en ejecución": visible mientras dura el sondeo -->
+      @if (isRunning) {
+        <div class="running-card">
+          <span class="spinner"></span>
+          <div>
+            <strong>Analizando el objetivo…</strong>
+            <p>Ejecutando analizadores de TLS, headers, cookies, HTTP, tecnologías y exposición.</p>
+          </div>
+        </div>
+      }
+
+      <!-- Fallo total de la auditoría: mensaje seguro del backend (RF-031) -->
+      @if (audit.status === 'FAILED') {
+        <div class="alert">
+          {{ audit.errorMessage ?? 'La auditoría no pudo completarse.' }}
+        </div>
+      }
+
+      <!-- Errores parciales por analizador: resultados conservados (RF-032) -->
+      @if (audit.analyzerErrors.length > 0 && !isRunning) {
+        <div class="warning-card">
+          Algunos analizadores finalizaron con error y se conservaron los resultados parciales:
+          {{ analyzerErrorNames() }}
+        </div>
+      }
+
+      <!-- Dashboard completo: solo cuando la auditoría terminó -->
+      @if (audit.status === 'COMPLETED') {
+        <div class="dashboard">
+          <!-- Tarjeta Security Score: anillo SVG + nota + acciones -->
+          <div class="score-card card">
+            <h2>Security Score</h2>
+            <div class="score-ring" [class]="scoreColorClass">
+              <!-- El anillo se llena según stroke-dashoffset calculado (ringOffset) -->
+              <svg viewBox="0 0 120 120" width="150" height="150">
+                <circle cx="60" cy="60" r="54" class="ring-bg" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="54"
+                  class="ring-value"
+                  [style.stroke-dashoffset]="ringOffset"
+                />
+              </svg>
+              <div class="score-text">
+                <span class="score-number">{{ score }}</span>
+                <span class="score-grade">Nota {{ audit.grade }}</span>
+              </div>
+            </div>
+            <!-- Acciones: navegar a hallazgos y descargar el PDF (RF-030).
+                 La descarga va autenticada por interceptor y el nombre del
+                 archivo incluye el dominio escaneado. -->
+            <button class="btn primary" (click)="scrollToFindings()">Ver hallazgos</button>
+            <button
+              type="button"
+              class="btn secondary"
+              (click)="downloadReport()"
+              [disabled]="downloading"
+            >
+              {{ downloading ? 'Generando…' : '⬇ Descargar informe PDF' }}
+            </button>
+          </div>
+
+          <!-- Tarjeta distribución de riesgos por severidad -->
+          <div class="counts-card card">
+            <h2>Distribución de riesgos</h2>
+            <p class="total">{{ totalFindings }} hallazgos</p>
+            <ul class="severity-list">
+              @for (severity of severityOrder; track severity) {
+                <li>
+                  <span class="dot" [class]="'dot-' + severity.toLowerCase()"></span>
+                  <span class="sev-name">{{ severityLabels[severity] }}</span>
+                  <span class="sev-count">{{ countOf(severity) }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+
+          <!-- Tarjeta tecnologías detectadas (RF-011) -->
+          <div class="tech-card card">
+            <h2>Tecnologías detectadas</h2>
+            @if (audit.technologies.length === 0) {
+              <p class="empty">No se identificaron tecnologías con confianza suficiente.</p>
+            } @else {
+              <ul class="tech-list">
+                <!-- title muestra la fuente de detección al pasar el cursor -->
+                @for (tech of audit.technologies; track tech.name) {
+                  <li class="tech-chip" [title]="'Fuente: ' + tech.source">
+                    <strong>{{ tech.name }}</strong>
+                    @if (tech.version) {
+                      <span class="version">{{ tech.version }}</span>
+                    }
+                    <span class="category">{{ tech.category }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <!-- Sección de hallazgos ordenados por riesgo (RF-017) -->
+        <div class="findings-section" #findingsSection>
+          <h2>Hallazgos ({{ audit.findings.length }})</h2>
+          <p class="hint">Ordenados de mayor a menor riesgo. Haz clic para ver el detalle.</p>
+
+          @if (audit.findings.length === 0) {
+            <!-- Sin hallazgos: aviso de que no garantiza seguridad -->
+            <div class="card empty-state">
+              No se detectaron problemas en esta auditoría. Recuerda que esto no garantiza que el
+              sitio sea seguro.
+            </div>
+          }
+
+          <!-- Acordeón: un hallazgo expandido a la vez (expandedRefId) -->
+          <ul class="findings-list">
+            @for (finding of audit.findings; track finding.refId) {
+              <li class="finding card" [class.open]="expandedRefId === finding.refId">
+                <!-- Cabecera clicable: badge de severidad + título + chevron -->
+                <button class="finding-header" (click)="toggleFinding(finding.refId)">
+                  <span class="badge" [class]="'badge-' + finding.severity.toLowerCase()">
+                    {{ severityLabels[finding.severity] }}
+                  </span>
+                  <span class="finding-title">
+                    <span class="ref-id">{{ finding.refId }}</span>
+                    {{ finding.title }}
+                  </span>
+                  <span class="chevron">{{ expandedRefId === finding.refId ? '−' : '+' }}</span>
+                </button>
+
+                <!-- Cuerpo expandido: detalle completo del hallazgo -->
+                @if (expandedRefId === finding.refId) {
+                  <div class="finding-body">
+                    <p class="confidence">
+                      Confianza: <strong>{{ finding.confidence }}</strong> · Categoría:
+                      {{ finding.category }}
+                    </p>
+
+                    <h4>Descripción</h4>
+                    <p>{{ finding.description }}</p>
+
+                    <!-- Evidencia en bloque preformateado para conservar formato -->
+                    <h4>Evidencia</h4>
+                    <pre class="evidence">{{ finding.evidence }}</pre>
+
+                    <h4>Impacto</h4>
+                    <p>{{ finding.impact }}</p>
+
+                    <h4>Recomendación</h4>
+                    <p>{{ finding.recommendation }}</p>
+
+                    <!-- Referencias a estándares solo si existe alguna (RF-019..RF-022) -->
+                    @if (
+                      finding.references.owasp.length > 0 ||
+                      finding.references.cwe.length > 0 ||
+                      finding.references.cve.length > 0 ||
+                      finding.references.iso.length > 0
+                    ) {
+                      <h4>Referencias</h4>
+                      <ul class="refs">
+                        @for (ref of finding.references.owasp; track ref) {
+                          <li><span class="ref-tag owasp">OWASP</span> {{ ref }}</li>
+                        }
+                        @for (ref of finding.references.cwe; track ref) {
+                          <li><span class="ref-tag cwe">CWE</span> {{ ref }}</li>
+                        }
+                        @for (ref of finding.references.cve; track ref) {
+                          <li><span class="ref-tag cve">CVE</span> {{ ref }}</li>
+                        }
+                        @for (ref of finding.references.iso; track ref) {
+                          <li><span class="ref-tag iso">ISO/IEC</span> {{ ref }}</li>
+                        }
+                      </ul>
+                      <!-- Aviso legal sobre la relación con ISO/IEC -->
+                      <p class="iso-note">
+                        La relación con ISO/IEC es una referencia técnica y no constituye
+                        certificación ni auditoría formal de cumplimiento.
+                      </p>
+                    }
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    }
+  </section>
+</ng-template>

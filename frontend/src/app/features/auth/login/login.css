@@ -1,0 +1,117 @@
+/* ============================================================================
+   ESTILOS LOGIN / REGISTRO
+   Tarjeta centrada sobre fondo suave, coherente con la paleta del sistema.
+============================================================================ */
+
+.auth-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  color: #64748b;
+  font-size: 13.5px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+input {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.btn.primary {
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.switch {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.switch a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* En pantallas muy estrechas la tarjeta aprovecha mejor el ancho. */
+@media (max-width: 400px) {
+  .auth-wrap {
+    padding: 28px 12px;
+  }
+
+  .card {
+    padding: 24px 18px;
+  }
+}

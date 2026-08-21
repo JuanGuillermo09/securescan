@@ -1,0 +1,99 @@
+<!-- ============================================================================
+     PLANTILLA RAÍZ
+     Barra superior con marca y navegación (adaptada a la sesión), contenido
+     enrutado y pie con el aviso de uso responsable (RNF-025).
+============================================================================ -->
+
+<!-- Barra superior en tres zonas en escritorio (marca, usuario y menú);
+     en pantallas estrechas el menú se convierte en un panel hamburguesa. -->
+<header class="topbar">
+  <a routerLink="/" class="brand" (click)="closeMenu()">
+    <span class="logo">
+      <img src="logo.png" alt="Logo de SecureScan">
+    </span>
+    <span>SecureScan <em>Web</em></span>
+  </a>
+
+  <!-- Zona central (solo escritorio): identidad del usuario autenticado -->
+  @if (auth.isAuthenticated()) {
+    <span class="user-chip topbar-user" [title]="auth.currentUser()?.email">
+      {{ auth.currentUser()?.displayName || auth.currentUser()?.email }}
+    </span>
+  } @else {
+    <span class="topbar-spacer" aria-hidden="true"></span>
+  }
+
+  <!-- Navegación: fila normal en escritorio, panel desplegable en móvil -->
+  <nav id="main-nav" [class.open]="menuOpen()">
+    @if (auth.isAuthenticated()) {
+      <!-- Nombre del usuario dentro del panel móvil -->
+      <span class="user-chip panel-user" [title]="auth.currentUser()?.email">
+        {{ auth.currentUser()?.displayName || auth.currentUser()?.email }}
+      </span>
+      <a routerLink="/nueva-auditoria" routerLinkActive="active" (click)="closeMenu()">Nueva auditoría</a>
+      <a routerLink="/historial" routerLinkActive="active" (click)="closeMenu()">Historial</a>
+      <button type="button" class="logout" (click)="logout()">Salir</button>
+    } @else {
+      <a routerLink="/login" routerLinkActive="active" (click)="closeMenu()">Iniciar sesión</a>
+      <a routerLink="/registro" routerLinkActive="active" class="cta" (click)="closeMenu()">Registrarse</a>
+    }
+  </nav>
+
+  <!-- Botón hamburguesa: visible solo en pantallas estrechas -->
+  <button
+    type="button"
+    class="menu-toggle"
+    (click)="toggleMenu()"
+    [attr.aria-expanded]="menuOpen()"
+    aria-controls="main-nav"
+    [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'"
+  >
+    @if (menuOpen()) {
+      <!-- Cruz de cierre -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    } @else {
+      <!-- Tres líneas -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16"/>
+      </svg>
+    }
+  </button>
+</header>
+
+<!-- Fondo oscurecido tras el panel abierto: al pulsarlo se cierra -->
+@if (menuOpen()) {
+  <div class="menu-backdrop" (click)="closeMenu()" aria-hidden="true"></div>
+}
+
+<!-- Contenido: aquí se monta el componente de la ruta activa -->
+<main>
+  <router-outlet />
+</main>
+
+<!-- Pie de página con recordatorio de autorización (uso responsable) -->
+<footer class="footer">
+  SecureScan Web · Uso responsable: analice únicamente aplicaciones para las que tenga autorización.
+</footer>
+
+<!-- Botón flotante "volver arriba": aparece tras descender 400 px -->
+@if (showScrollTop()) {
+  <button
+    type="button"
+    class="scroll-top"
+    (click)="scrollToTop()"
+    aria-label="Volver arriba"
+    title="Volver arriba"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 19V5M5 12l7-7 7 7"/>
+    </svg>
+  </button>
+}
+
+<!-- Capa global de alertas: modal de confirmación y toasts (siempre montada) -->
+<app-alerts />

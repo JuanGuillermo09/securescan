@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  audits       Audit[]
+}
+
+model Audit {
+  id                 String     @id @default(cuid())
+  userId             String?
+  user               User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url                String
+  domain             String
+  status             String     @default("PENDING")
+  startedAt          DateTime   @default(now())
+  finishedAt         DateTime?
+  score              Int?
+  grade              String?
+  criticalCount      Int        @default(0)
+  highCount          Int        @default(0)
+  mediumCount        Int        @default(0)
+  lowCount           Int        @default(0)
+  infoCount          Int        @default(0)
+  technologiesJson   String     @default("[]")
+  rawResultsJson     String     @default("{}")
+  analyzerErrorsJson String     @default("[]")
+  errorMessage       String?
+  /// Marca las auditorías de ejemplo entregadas al registrarse:
+  /// no se pueden borrar ni individual ni masivamente.
+  isExample          Boolean    @default(false)
+  findings           Finding[]
+
+  @@index([startedAt])
+  @@index([userId])
+}
+
+model Finding {
+  id              String @id @default(cuid())
+  auditId         String
+  audit           Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  refId           String
+  title           String
+  category        String
+  severity        String
+  confidence      String
+  description     String
+  evidence        String
+  impact          String
+  recommendation  String
+  riskScore       Int    @default(0)
+  impactLevel     Int    @default(0)
+  probabilityLevel Int   @default(0)
+  exposureLevel   Int    @default(0)
+  owaspJson       String @default("[]")
+  cweJson         String @default("[]")
+  cveJson         String @default("[]")
+  isoJson         String @default("[]")
+
+  @@index([auditId])
+}

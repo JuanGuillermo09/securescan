@@ -1,0 +1,5 @@
+
+> securescan-backend@1.0.0 start
+> tsx src/server.ts
+
+[2026-08-21T02:56:39.186Z] [INFO] SecureScan backend escuchando en http://localhost:3000

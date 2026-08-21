@@ -1,0 +1,78 @@
+:root {
+  --bg: #0b1220;
+  --surface: #101a2c;
+  --border: #1e293b;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Evita el reescalado automático del texto en móviles en orientación
+   horizontal y mantiene un comportamiento predecible del zoom. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Navegación suave al saltar entre secciones o rutas ancladas. */
+  scroll-behavior: smooth;
+}
+
+/* ── Barra de desplazamiento visible con el tema oscuro ──────────────────
+   Sin esto, el navegador puede pintarla casi invisible sobre el fondo
+   oscuro y da la impresión de que la página no se puede desplazar. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b3a52;
+  border-radius: 8px;
+  border: 3px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3d5271;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg);
+}
+
+/* Firefox: color de pulgar y carril equivalentes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3a52 var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografía fluida: crece y se reduce con el ancho de la ventana. */
+h1 {
+  font-size: clamp(1.35rem, 3.5vw, 1.6rem);
+}

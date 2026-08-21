@@ -1,0 +1,12 @@
+node_modules/
+dist/
+# Excepción: el build del frontend viaja dentro del backend (backend/dist/frontend)
+# para que Render lo reciba por git y el Express lo sirva en un solo servicio.
+!backend/dist/
+!backend/dist/frontend/
+dev.db
+dev.db-journal
+.env
+*.log
+.angular/
+reports/*.pdf

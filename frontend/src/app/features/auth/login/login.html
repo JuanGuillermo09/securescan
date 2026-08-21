@@ -1,0 +1,51 @@
+<!-- ============================================================================
+     PLANTILLA LOGIN
+     Tarjeta centrada con formulario de acceso y enlace a registro.
+============================================================================ -->
+
+<section class="auth-wrap">
+  <div class="card">
+    <h1>Iniciar sesión</h1>
+    <p class="subtitle">Accede para ver tu historial y lanzar auditorías.</p>
+
+    <form (ngSubmit)="submit()">
+      <label>
+        Correo electrónico
+        <input
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          placeholder="tu@correo.com"
+          autocomplete="email"
+          required
+        />
+      </label>
+
+      <label>
+        Contraseña
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        />
+      </label>
+
+      <!-- Mensaje de error devuelto por el backend -->
+      @if (error) {
+        <p class="error">{{ error }}</p>
+      }
+
+      <button class="btn primary" type="submit" [disabled]="submitting || !email || !password">
+        {{ submitting ? 'Entrando…' : 'Entrar' }}
+      </button>
+    </form>
+
+    <p class="switch">
+      ¿No tienes cuenta?
+      <a routerLink="/registro">Regístrate gratis</a>
+    </p>
+  </div>
+</section>

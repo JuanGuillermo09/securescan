@@ -1,0 +1,152 @@
+/* ============================================================================
+   ALERTS — ESTILOS DEL MODAL DE CONFIRMACIÓN Y DE LOS TOASTS
+   Usa las variables globales del tema (--surface, --border, --accent...).
+============================================================================ */
+
+/* ── Modal de confirmación ──────────────────────────────────────────────── */
+
+.alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 20, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+  animation: overlay-in 0.15s ease;
+}
+
+.confirm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 26px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  animation: card-in 0.18s ease;
+}
+
+.confirm-title {
+  margin: 0 0 10px;
+  font-size: 1.12rem;
+}
+
+.confirm-message {
+  margin: 0 0 22px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-cancel:hover {
+  border-color: var(--text-muted);
+  color: inherit;
+}
+
+.btn-confirm {
+  background: var(--accent);
+  color: #04121f;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn-confirm:hover {
+  filter: brightness(1.1);
+}
+
+/* Variante destructiva: aceptar en rojo */
+.btn-confirm.danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* ── Toasts ─────────────────────────────────────────────────────────────── */
+
+.toast-stack {
+  position: fixed;
+  top: 74px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1100;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: toast-in 0.2s ease;
+}
+
+.toast-success { border-left-color: #22c55e; }
+.toast-error   { border-left-color: #ef4444; }
+.toast-info    { border-left-color: #3b82f6; }
+
+.toast-message {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toast-close:hover {
+  color: inherit;
+}
+
+/* ── Animaciones de entrada ─────────────────────────────────────────────── */
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}

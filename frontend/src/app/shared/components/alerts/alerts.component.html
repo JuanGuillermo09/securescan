@@ -1,0 +1,53 @@
+<!-- ============================================================================
+     ALERTS — CAPA GLOBAL DE AVISOS
+     1) Modal de confirmación Sí/No (sustituye al confirm() nativo).
+     2) Pila de toasts en la esquina superior derecha.
+============================================================================ -->
+
+<!-- Modal de confirmación: el fondo clicado cancela -->
+@if (alerts.confirmState(); as c) {
+  <div class="alert-overlay" (click)="alerts.answer(false)">
+    <!-- role/aria para lectores de pantalla; el click interno no propaga -->
+    <div
+      class="confirm-card"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="c.title"
+      (click)="$event.stopPropagation()"
+    >
+      <h2 class="confirm-title">{{ c.title }}</h2>
+      <p class="confirm-message">{{ c.message }}</p>
+
+      <div class="confirm-actions">
+        <button type="button" class="btn-cancel" (click)="alerts.answer(false)">
+          {{ c.cancelText ?? 'No, cancelar' }}
+        </button>
+        <button
+          type="button"
+          class="btn-confirm"
+          [class.danger]="c.danger"
+          (click)="alerts.answer(true)"
+        >
+          {{ c.confirmText ?? 'Sí, continuar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Pila de toasts: cada uno con color según su tipo y cierre manual -->
+<div class="toast-stack" aria-live="polite">
+  @for (toast of alerts.toasts(); track toast.id) {
+    <div class="toast" [class]="'toast-' + toast.type">
+      <span class="toast-message">{{ toast.message }}</span>
+      <button
+        type="button"
+        class="toast-close"
+        aria-label="Cerrar aviso"
+        (click)="alerts.dismissToast(toast.id)"
+      >
+        ×
+      </button>
+    </div>
+  }
+</div>

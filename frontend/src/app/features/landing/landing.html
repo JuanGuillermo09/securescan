@@ -1,0 +1,80 @@
+<!-- ============================================================================
+     PLANTILLA LANDING
+     Página de presentación: héroe, características, flujo de uso,
+     tecnologías y llamada final a la acción.
+============================================================================ -->
+
+<!-- Héroe: propuesta de valor + acciones principales -->
+<section class="hero">
+  <p class="badge">Proyecto académico · Análisis pasivo de seguridad web</p>
+  <h1>
+    Escanea la seguridad de tu sitio
+    <span class="highlight">en segundos</span>
+  </h1>
+  <p class="lead">
+    SecureScan Web analiza cabeceras, TLS, cookies, configuración HTTP,
+    tecnologías expuestas e información pública de cualquier aplicación web
+    autorizada — y te entrega un informe PDF con un Security Score explicado.
+  </p>
+
+  <div class="cta">
+    @if (auth.isAuthenticated()) {
+      <a routerLink="/nueva-auditoria" class="btn primary">Nueva auditoría</a>
+      <a routerLink="/historial" class="btn ghost">Ver mi historial</a>
+    } @else {
+      <a routerLink="/registro" class="btn primary">Crear cuenta gratis</a>
+      <a routerLink="/login" class="btn ghost">Iniciar sesión</a>
+    }
+  </div>
+</section>
+
+<!-- Características: las seis familias de análisis -->
+<section class="section">
+  <h2>¿Qué analiza?</h2>
+  <div class="grid">
+    @for (feature of features; track feature.title) {
+      <article class="feature">
+        <span class="icon">{{ feature.icon }}</span>
+        <h3>{{ feature.title }}</h3>
+        <p>{{ feature.text }}</p>
+      </article>
+    }
+  </div>
+</section>
+
+<!-- Cómo funciona: tres pasos -->
+<section class="section alt">
+  <h2>Cómo funciona</h2>
+  <div class="steps">
+    @for (step of steps; track step.num) {
+      <div class="step">
+        <span class="num">{{ step.num }}</span>
+        <h3>{{ step.title }}</h3>
+        <p>{{ step.text }}</p>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- Stack tecnológico -->
+<section class="section">
+  <h2>Construido con</h2>
+  <div class="chips">
+    @for (tech of stack; track tech) {
+      <span class="chip">{{ tech }}</span>
+    }
+  </div>
+</section>
+
+<!-- Cierre: logotipo centrado, aviso de uso responsable y CTA -->
+<section class="closing">
+  <img src="logo.png" alt="Logo de SecureScan" class="closing-logo">
+  <h2>¿Listo para conocer tu exposición?</h2>
+  <p>
+    Evaluación automatizada, principalmente pasiva. Analiza únicamente
+    aplicaciones para las que tengas autorización.
+  </p>
+  @if (!auth.isAuthenticated()) {
+    <a routerLink="/registro" class="btn primary big">Empezar ahora</a>
+  }
+</section>

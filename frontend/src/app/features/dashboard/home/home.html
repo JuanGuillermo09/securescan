@@ -1,0 +1,64 @@
+<!-- ============================================================================
+     HOME — FORMULARIO DE NUEVA AUDITORÍA (HU-001)
+     URL del objetivo + confirmación de autorización + envío al backend.
+     Ruta privada: requiere sesión activa (RNF-002).
+============================================================================ -->
+<section class="hero">
+  <h1>Evalúa la seguridad de tu aplicación web</h1>
+  <p class="subtitle">
+    Análisis automatizado de HTTPS/TLS, security headers, cookies, HTTP, tecnologías e información
+    expuesta. Ingresa la URL del objetivo autorizado y obtén resultados con Security Score y
+    descarga en PDF.
+  </p>
+
+  <!-- Formulario: submit() valida en el componente antes de llamar a la API -->
+  <form class="scan-form" (ngSubmit)="submit()">
+    <!-- Campo URL con validación en vivo (urlValid) -->
+    <div class="field">
+      <label for="url">URL del objetivo</label>
+      <input
+        id="url"
+        name="url"
+        type="text"
+        placeholder="https://tu-aplicacion.com"
+        [(ngModel)]="url"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      @if (url.length > 0 && !urlValid) {
+        <p class="hint error-hint">Ingresa una URL válida que comience por http:// o https://</p>
+      }
+    </div>
+
+    <!-- Confirmación obligatoria de autorización (uso responsable, RNF-025) -->
+    <label class="authorize">
+      <input type="checkbox" [(ngModel)]="authorized" name="authorized" />
+      <span>
+        Confirmo que poseo <strong>autorización</strong> para realizar el análisis sobre este
+        objetivo.
+      </span>
+    </label>
+
+    <!-- Mensaje de error devuelto por el backend o fallo de red -->
+    @if (error) {
+      <div class="alert">{{ error }}</div>
+    }
+
+    <!-- Botón deshabilitado hasta que formValid sea verdadero -->
+    <button class="btn primary" type="submit" [disabled]="!formValid">
+      {{ submitting ? 'Iniciando auditoría…' : 'Iniciar auditoría' }}
+    </button>
+  </form>
+
+  <!-- Resumen visual de capacidades de la V1 -->
+  <ul class="features">
+    <li>🔐 HTTPS / TLS y certificados</li>
+    <li>🛡️ Security Headers</li>
+    <li>🍪 Cookies seguras</li>
+    <li>🌐 Configuración HTTP</li>
+    <li>🔎 Tecnologías y CVE conocidos</li>
+    <li>📡 Información expuesta</li>
+    <li>📊 Security Score</li>
+    <li>📄 Informe PDF descargable</li>
+  </ul>
+</section>

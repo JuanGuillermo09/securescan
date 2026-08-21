@@ -1,0 +1,113 @@
+<!-- ============================================================================
+     HISTORY — HISTORIAL DE AUDITORÍAS (HU-003, RF-028/RF-029)
+     Estados: cargando · error de red · vacío · listado con enlaces.
+============================================================================ -->
+<section class="history">
+  <div class="history-header">
+    <h1>Historial de auditorías</h1>
+
+    <!-- Borrado masivo: solo visible si hay auditorías eliminables.
+         Los ejemplos siempre se conservan (RF-029). -->
+    @if (!loading && !loadError && hasDeletable) {
+      <button
+        type="button"
+        class="btn danger"
+        (click)="deleteAll()"
+        [disabled]="deletingAll"
+      >
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+        {{ deletingAll ? 'Eliminando…' : 'Borrar todo' }}
+      </button>
+    }
+  </div>
+
+  @if (loading) {
+    <!-- Estado de carga inicial -->
+    <p class="muted">Cargando…</p>
+  } @else if (loadError) {
+    <!-- Fallo al consultar el backend -->
+    <div class="alert">
+      No fue posible cargar el historial. Verifica que el backend esté en ejecución.
+    </div>
+  } @else if (audits.length === 0) {
+    <!-- Sin auditorías: llamada a la acción hacia el formulario -->
+    <div class="card empty-state">
+      <p>Aún no hay auditorías registradas.</p>
+      <a routerLink="/" class="btn primary">Realizar la primera auditoría</a>
+    </div>
+  } @else {
+    <!-- Listado: cada fila es un enlace al dashboard de la auditoría -->
+    <ul class="audit-list">
+      @for (audit of audits; track audit.id) {
+        <li class="audit-item">
+          <!-- Enlace al dashboard: ocupa toda la tarjeta menos el botón -->
+          <a class="card audit-row" [routerLink]="['/auditoria', audit.id]">
+            <!-- Columna principal: dominio, URL y fecha -->
+            <div class="row-main">
+              <span class="domain">
+                {{ audit.domain }}
+                @if (audit.isExample) {
+                  <em class="example-badge" title="La auditoría de ejemplo no se puede eliminar">
+                    Ejemplo
+                  </em>
+                }
+              </span>
+              <span class="url">{{ audit.url }}</span>
+              <span class="date">{{ audit.startedAt | date: 'dd/MM/yyyy, HH:mm' }}</span>
+            </div>
+
+            <!-- Columna lateral: estado, score y conteo de hallazgos -->
+            <div class="row-side">
+              <span class="status-badge" [class]="'status-' + audit.status.toLowerCase()">
+                {{ statusLabels[audit.status] }}
+              </span>
+
+              @if (audit.score !== null) {
+                <span class="score" [class]="'score-' + (audit.grade ?? '').toLowerCase()">
+                  {{ audit.score }} · {{ audit.grade }}
+                </span>
+              }
+
+              <span class="findings-count">
+                {{ totalFindings(audit) }} hallazgos
+                @if (audit.counts.critical > 0) {
+                  <em class="crit">({{ audit.counts.critical }} critical)</em>
+                }
+              </span>
+            </div>
+          </a>
+
+          <!-- Borrado individual FUERA del enlace: al pulsarlo no se navega.
+               Sobre el ejemplo solo informa (RF-029). -->
+          <button
+            type="button"
+            class="row-delete"
+            [class.locked]="audit.isExample"
+            [disabled]="deletingIds.has(audit.id)"
+            [title]="audit.isExample
+              ? 'La auditoría de ejemplo no se puede eliminar'
+              : 'Eliminar auditoría'"
+            [attr.aria-label]="audit.isExample
+              ? 'Auditoría de ejemplo protegida'
+              : 'Eliminar auditoría'"
+            (click)="deleteOne(audit)"
+          >
+            @if (audit.isExample) {
+              <!-- Candado: el ejemplo es permanente -->
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+              </svg>
+            } @else {
+              <!-- Papelera -->
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</section>

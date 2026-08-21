@@ -1,0 +1,130 @@
+.hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 16px 64px;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+.scan-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+input[type='text']:focus {
+  border-color: var(--accent);
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.error-hint {
+  color: #f87171;
+}
+
+.authorize {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.authorize input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.alert {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #04121f;
+}
+
+.btn.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.primary:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 28px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+/* En móviles el formulario respira mejor con menos relleno. */
+@media (max-width: 480px) {
+  .hero {
+    padding: 32px 12px 48px;
+  }
+
+  .scan-form {
+    padding: 18px 16px;
+  }
+}
