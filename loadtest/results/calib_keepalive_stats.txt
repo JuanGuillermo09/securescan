@@ -1,0 +1,7 @@
+﻿securescan-distributed-api-3-1|176.77%|230.1MiB / 13.6GiB|1.65%
+securescan-distributed-api-2-1|176.21%|177.4MiB / 13.6GiB|1.27%
+securescan-distributed-api-1-1|177.16%|287.5MiB / 13.6GiB|2.06%
+securescan-distributed-nginx-1|68.14%|48.77MiB / 13.6GiB|0.35%
+securescan-distributed-postgres-1|91.09%|116.4MiB / 13.6GiB|0.84%
+securescan-distributed-target-sim-1|0.00%|12.2MiB / 13.6GiB|0.09%
+cyberguard-db|0.00%|42.12MiB / 13.6GiB|0.30%

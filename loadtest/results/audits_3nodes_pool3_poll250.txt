@@ -1,0 +1,3 @@
+[audits] API=http://localhost:8080 objetivo=http://target-sim:8081 cantidad=30 concurrencia_creacion=10
+[audits] RESULTADO: creadas=30 completadas=30 fallidas=0 pendientes=0 total=1.31s auditorias/min=1371.95 tiempo_medio=0.39s
+[audits] JSON {"count":30,"created":30,"completed":30,"failed":0,"stillPending":0,"totalSeconds":1.31,"auditsPerMinute":1371.95,"averageSeconds":0.39}

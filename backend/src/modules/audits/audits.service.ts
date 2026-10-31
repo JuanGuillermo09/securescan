@@ -23,6 +23,9 @@ import {
   findLatestCompletedByDomain
 } from './audits.repository';
 import { runAudit } from '../../scanners/core/scanner.engine';
+import { enqueueJob } from '../jobs/jobs.repository';
+import { notifyJobAvailable } from '../jobs/job-notifier';
+import { env } from '../../config/env';
 import { AuditDetailDto, AuditSummaryDto } from './audits.types';
 
 /**
@@ -116,9 +119,17 @@ export async function startAudit(
     isExample
   });
 
-  // Ejecución asíncrona sin bloquear la respuesta HTTP.
-  void runAudit(audit.id);
-  logger.info(`Auditoría ${audit.id} creada para ${audit.domain}`);
+  if (env.queueMode) {
+    // Modo distribuido: el trabajo se persiste en PostgreSQL y lo ejecuta
+    // cualquier réplica que esté sondeando la cola.
+    await enqueueJob(audit.id);
+    notifyJobAvailable();
+    logger.info(`Auditoría ${audit.id} encolada para ${audit.domain}`);
+  } else {
+    // Modo simple (V1): ejecución asíncrona en el mismo proceso.
+    void runAudit(audit.id);
+    logger.info(`Auditoría ${audit.id} creada para ${audit.domain}`);
+  }
 
   return toSummaryDto(audit);
 }
@@ -152,6 +163,12 @@ export const EXAMPLE_AUDIT_DOMAIN = 'example.com';
  * @param userId Propietario del ejemplo.
  */
 export async function createExampleAuditForUser(userId: string): Promise<void> {
+  // En el perfil distribuido de pruebas se puede desactivar para no generar
+  // tráfico externo ni auditorías ajenas al objetivo simulado.
+  if (!env.exampleAuditEnabled) {
+    return;
+  }
+
   const template = await findLatestCompletedByDomain(EXAMPLE_AUDIT_DOMAIN);
 
   if (template) {

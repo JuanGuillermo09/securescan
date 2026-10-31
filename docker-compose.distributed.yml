@@ -1,0 +1,149 @@
+# ============================================================================
+# SECURESCAN · PERFIL DISTRIBUIDO
+# ----------------------------------------------------------------------------
+# PostgreSQL + cola de trabajos + 1..3 réplicas del backend + NGINX +
+# objetivo simulado. El modo simple (SQLite, un proceso) NO usa este archivo.
+#
+#   docker compose -f docker-compose.distributed.yml --profile scale up -d --build
+#
+# Variables de interés:
+#   NGINX_CONF          ./infra/nginx.3nodes.conf (defecto) o nginx.1node.conf
+#   ANALYZER_POOL_SIZE  0 (sin pool) o N (pool de hilos)
+#   FAIL_ANALYZER       nombre de analizador que falla a propósito (E7)
+#   JOB_STALE_SECONDS   segundos sin latido para reasignar un trabajo
+# ============================================================================
+
+name: securescan-distributed
+
+x-api-environment: &api-environment
+  DATABASE_URL: postgresql://securescan:securescan@postgres:5432/securescan?schema=public
+  PORT: "3000"
+  NODE_ENV: production
+  JWT_SECRET: distributed-test-secret-change-me
+  TRUST_PROXY: "1"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  # Cuotas muy altas para que el rate limit no tape los resultados de carga.
+  RATE_LIMIT_MAX: "1000000"
+  RATE_LIMIT_READ_MAX: "10000000"
+  SCAN_TIMEOUT_MS: "5000"
+  QUEUE_MODE: "true"
+  JOB_CONCURRENCY: "${JOB_CONCURRENCY:-4}"
+  JOB_POLL_MS: "${JOB_POLL_MS:-250}"
+  JOB_HEARTBEAT_MS: "3000"
+  JOB_STALE_SECONDS: "${JOB_STALE_SECONDS:-15}"
+  ANALYZER_POOL_SIZE: "${ANALYZER_POOL_SIZE:-3}"
+  ANALYZER_TIMEOUT_MS: "5000"
+  FAIL_ANALYZER: "${FAIL_ANALYZER:-}"
+  # Aislamiento de pruebas: no generar auditorías a example.com.
+  EXAMPLE_AUDIT_ENABLED: "false"
+
+x-api-service: &api-service
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  expose:
+    - "3000"
+  healthcheck:
+    test:
+      - CMD
+      - node
+      - -e
+      - "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    interval: 5s
+    timeout: 3s
+    retries: 20
+    start_period: 20s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: securescan
+      POSTGRES_PASSWORD: securescan
+      POSTGRES_DB: securescan
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U securescan -d securescan"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Aplica el esquema PostgreSQL una sola vez antes de arrancar las APIs.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: "no"
+    command: >
+      npx prisma db push --schema prisma/schema.postgres.prisma --skip-generate
+    environment:
+      DATABASE_URL: postgresql://securescan:securescan@postgres:5432/securescan?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-1:
+    <<: *api-service
+    environment:
+      <<: *api-environment
+      NODE_ID: api-1
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api-2:
+    <<: *api-service
+    profiles: ["scale"]
+    environment:
+      <<: *api-environment
+      NODE_ID: api-2
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api-3:
+    <<: *api-service
+    profiles: ["scale"]
+    environment:
+      <<: *api-environment
+      NODE_ID: api-3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Objetivo simulado: el ÚNICO sitio que se escanea en las pruebas.
+  target-sim:
+    image: node:22-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "server.js"]
+    volumes:
+      - ./tools/target-sim:/app:ro
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:8081/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ${NGINX_CONF:-./infra/nginx.3nodes.conf}:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api-1:
+        condition: service_healthy
+
+volumes:
+  pgdata:

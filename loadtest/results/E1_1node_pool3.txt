@@ -1,0 +1,6 @@
+[read] objetivo=http://localhost:8080/api/audits conexiones=10 duracion=30s repeticiones=3
+[read] repeticion 1: req/s=444.64 p50=23ms p97.5=50ms p99=56ms errores=0.01% (2/13339; red=2, http=0, timeout=0)
+[read] repeticion 2: req/s=447.67 p50=23ms p97.5=52ms p99=56ms errores=0.01% (2/13430; red=2, http=0, timeout=0)
+[read] repeticion 3: req/s=444.47 p50=23ms p97.5=50ms p99=56ms errores=0.01% (1/13334; red=1, http=0, timeout=0)
+[read] MEDIANA: req/s=444.64 p50=23ms p97.5=50ms p99=56ms errores=0.01% (red=5, http=0, timeout=0)
+[read] JSON {"connections":10,"duration":30,"repeats":3,"reqPerSec":444.64,"p50":23,"p97_5":50,"p99":56,"errorPct":0.014892032762472078,"networkErrors":5,"non2xx":0,"timeouts":0}

@@ -1,0 +1,4 @@
+[read] objetivo=http://localhost:8080/api/audits conexiones=100 duracion=10s repeticiones=1
+[read] repeticion 1: req/s=1199 p50=78ms p97.5=125ms p99=165ms errores=0% (0/11990)
+[read] MEDIANA: req/s=1199 p50=78ms p97.5=125ms p99=165ms errores=0%
+[read] JSON {"connections":100,"duration":10,"repeats":1,"reqPerSec":1199,"p50":78,"p97_5":125,"p99":165,"errorPct":0}

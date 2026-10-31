@@ -1,0 +1,75 @@
+[chaos] objetivo simulado: latencia=1000ms
+[chaos] lanzando 120 auditorías en segundo plano
+[chaos] matando api-2 con SIGKILL
+bash.exe :  Container securescan-distributed-api-2-1 Killing 
+En línea: 1 Carácter: 1
++ & 'C:\Program Files\Git\bin\bash.exe' loadtest/chaos-kill-node.sh api ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container secu...pi-2-1 Killing :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container securescan-distributed-api-2-1 Killed 
+[chaos] esperando 20s para la reasignación
+[chaos] levantando api-2 de nuevo
+ Container securescan-distributed-postgres-1 Waiting 
+ Container securescan-distributed-postgres-1 Healthy 
+ Container securescan-distributed-migrate-1 Starting 
+ Container securescan-distributed-migrate-1 Started 
+ Container securescan-distributed-migrate-1 Waiting 
+ Container securescan-distributed-migrate-1 Exited 
+ Container securescan-distributed-api-2-1 Starting 
+ Container securescan-distributed-api-2-1 Started 
+[chaos] esperando a que terminen las auditorías
+[chaos] salida de audits.js:
+[audits] API=http://localhost:8080 objetivo=http://target-sim:8081 cantidad=120 concurrencia_creacion=20
+[audits] RESULTADO: creadas=120 completadas=120 fallidas=0 pendientes=0 total=42.91s auditorias/min=167.81 tiempo_medio=8.18s
+[audits] JSON {"count":120,"created":120,"completed":120,"failed":0,"stillPending":0,"totalSeconds":42.91,"auditsPerMinute":167.81,"averageSeconds":8.18}
+[chaos] estado de la cola:
+ status | count 
+--------+-------
+ DONE   |   120
+(1 row)
+
+[chaos] auditorías por estado:
+  status   | count 
+-----------+-------
+ COMPLETED |   120
+(1 row)
+
+[chaos] auditorías RUNNING con más de 60s (debe ser 0):
+ running_viejas 
+----------------
+              0
+(1 row)
+
+[chaos] evidencia de reasignación en logs:
+api-1-1  | [2026-10-31T21:42:54.514Z] [INFO] Trabajo 85e0f526-615f-47b6-87a1-852bb5b2f4ce reclamado por api-1 {"auditId":"cmvwxg97x018vo80v83iduxb4","attempt":1}
+api-1-1  | [2026-10-31T21:42:54.522Z] [INFO] Trabajo 67abac79-55b7-4ae4-bee7-fe1250b3c465 reclamado por api-1 {"auditId":"cmvwxg97x00pbs90v74og2r07","attempt":1}
+api-1-1  | [2026-10-31T21:42:55.744Z] [INFO] Trabajo 2951c1f4-9efc-4531-be72-93484b5d10f7 reclamado por api-1 {"auditId":"cmvwxg97g000xqt0wtd6zf405","attempt":1}
+api-1-1  | [2026-10-31T21:42:55.752Z] [INFO] Trabajo a652266e-8537-477f-9d44-0050fe0fdd9d reclamado por api-1 {"auditId":"cmvwxg97d000vqt0wqsi79268","attempt":1}
+api-1-1  | [2026-10-31T21:42:55.765Z] [INFO] Trabajo 659da939-65e6-447f-ac79-92e764385271 reclamado por api-1 {"auditId":"cmvwxg979000rqt0wxex9mkky","attempt":1}
+api-1-1  | [2026-10-31T21:42:55.774Z] [INFO] Trabajo 09bd2a39-1915-440c-9f1e-5d9fdc07d84c reclamado por api-1 {"auditId":"cmvwxg9840193o80vif9eay47","attempt":1}
+api-1-1  | [2026-10-31T21:42:56.995Z] [INFO] Trabajo 90e0753f-eaea-4039-9185-a94a1812715e reclamado por api-1 {"auditId":"cmvwxg98d0195o80vvc84kpkt","attempt":1}
+api-1-1  | [2026-10-31T21:42:57.003Z] [INFO] Trabajo 9cd8a5c4-dfb4-4c4d-a1aa-d578775f22d9 reclamado por api-1 {"auditId":"cmvwxg98f0197o80v46zi5ljy","attempt":1}
+api-1-1  | [2026-10-31T21:42:57.015Z] [INFO] Trabajo b4a52e94-085e-4303-9852-a0fbd9e922f2 reclamado por api-1 {"auditId":"cmvwxg98g00pls90v3lvjmalj","attempt":1}
+api-1-1  | [2026-10-31T21:42:57.023Z] [INFO] Trabajo 07567269-176c-4644-9863-b7b910348540 reclamado por api-1 {"auditId":"cmvwxg98i0199o80vzv34971o","attempt":1}
+api-1-1  | [2026-10-31T21:42:58.247Z] [INFO] Trabajo 02cb678a-8cde-4f5a-aafa-097bced022f9 reclamado por api-1 {"auditId":"cmvwxg98p019ho80vznargz78","attempt":1}
+api-1-1  | [2026-10-31T21:42:58.255Z] [INFO] Trabajo 2939420f-ec1f-4378-8ab0-3c74d13db244 reclamado por api-1 {"auditId":"cmvwxg98p000zqt0wu2vd1a07","attempt":1}
+api-1-1  | [2026-10-31T21:42:58.267Z] [INFO] Trabajo da1b9725-d5d3-47ee-8ad7-4973de5df6d4 reclamado por api-1 {"auditId":"cmvwxg98s00pps90vm09tkd4x","attempt":1}
+api-1-1  | [2026-10-31T21:42:58.275Z] [INFO] Trabajo 204a6179-9023-474e-a43b-adb26f77f454 reclamado por api-1 {"auditId":"cmvwxg98x00prs90vr5aw4zd8","attempt":1}
+api-1-1  | [2026-10-31T21:42:59.499Z] [INFO] Trabajo 93112f81-5aed-47cf-8802-536a317cc9dc reclamado por api-1 {"auditId":"cmvwxg996019no80v7ut3bi6p","attempt":1}
+api-1-1  | [2026-10-31T21:42:59.507Z] [INFO] Trabajo ba9a404b-1a92-46c2-bcd9-246e09c2e459 reclamado por api-1 {"auditId":"cmvwxg994019lo80vkx2qzlt0","attempt":1}
+api-1-1  | [2026-10-31T21:42:59.521Z] [INFO] Trabajo 112e45d3-e0d9-4e3b-8efc-ba2fe26af20b reclamado por api-1 {"auditId":"cmvwxg9900015qt0wdj3omvpg","attempt":1}
+api-1-1  | [2026-10-31T21:42:59.529Z] [INFO] Trabajo cc5b29b8-19d7-4ae2-bddd-47437ae07447 reclamado por api-1 {"auditId":"cmvwxg98r0011qt0weuz5gfhr","attempt":1}
+api-1-1  | [2026-10-31T21:43:00.745Z] [INFO] Trabajo 08cb5f37-7b92-48b5-b6ea-16b0e59b4860 reclamado por api-1 {"auditId":"cmvwxg99d00q1s90vq6305jxk","attempt":1}
+api-1-1  | [2026-10-31T21:43:00.749Z] [INFO] Trabajo 0e615902-2288-4bb4-a21a-dc9f3bb5c38f reclamado por api-1 {"auditId":"cmvwxg9970019qt0wa1cxokdr","attempt":1}
+api-1-1  | [2026-10-31T21:43:00.752Z] [INFO] Trabajo b5c5666c-f7b4-4a2b-b350-1cd2cd8f7091 reclamado por api-1 {"auditId":"cmvwxg99d001bqt0wipok904o","attempt":1}
+api-1-1  | [2026-10-31T21:43:00.757Z] [INFO] Trabajo 4ec5498a-283b-401b-b37a-b0a8df51ccf7 reclamado por api-1 {"auditId":"cmvwxg99f001dqt0wie08oe09","attempt":1}
+api-1-1  | [2026-10-31T21:43:05.004Z] [WARN] Trabajo huérfano 138c2665-72d1-4f18-b334-7310ab964125 reasignado a PENDING (auditoría cmvwxg96000obs90vt9pursiu, intento 1)
+api-1-1  | [2026-10-31T21:43:05.004Z] [WARN] Trabajo huérfano 72798047-18e5-4d51-a9d8-f32d9c43289e reasignado a PENDING (auditoría cmvwxg96200ods90vrljktp2k, intento 1)
+api-1-1  | [2026-10-31T21:43:05.004Z] [WARN] Trabajo huérfano ba204bef-efbf-4c1e-8a1b-7818778cef4c reasignado a PENDING (auditoría cmvwxg96400ofs90vt8io5q4e, intento 1)
+api-1-1  | [2026-10-31T21:43:05.004Z] [WARN] Trabajo huérfano 6f880015-d24c-47c1-bb6f-6521c53f7054 reasignado a PENDING (auditoría cmvwxg9650183o80v81wfvijy, intento 1)
+api-1-1  | [2026-10-31T21:43:05.007Z] [INFO] Trabajo 138c2665-72d1-4f18-b334-7310ab964125 reclamado por api-1 {"auditId":"cmvwxg96000obs90vt9pursiu","attempt":2}
+api-1-1  | [2026-10-31T21:43:05.009Z] [INFO] Trabajo 72798047-18e5-4d51-a9d8-f32d9c43289e reclamado por api-1 {"auditId":"cmvwxg96200ods90vrljktp2k","attempt":2}
+api-1-1  | [2026-10-31T21:43:05.014Z] [INFO] Trabajo ba204bef-efbf-4c1e-8a1b-7818778cef4c reclamado por api-1 {"auditId":"cmvwxg96400ofs90vt8io5q4e","attempt":2}
+api-1-1  | [2026-10-31T21:43:05.017Z] [INFO] Trabajo 6f880015-d24c-47c1-bb6f-6521c53f7054 reclamado por api-1 {"auditId":"cmvwxg9650183o80v81wfvijy","attempt":2}

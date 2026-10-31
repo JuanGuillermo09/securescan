@@ -24,13 +24,8 @@ import { fetchPage, probePath } from '../../shared/utils/http-client.util';
 import { PROBE_PATHS } from '../../shared/constants/app.constants';
 import { ScanContext } from './scanner.types';
 import { collectTlsInfo } from '../tls/tls.scanner';
-import { analyzeTls } from '../tls/tls.rules';
-import { analyzeHeaders } from '../headers/headers.scanner';
-import { analyzeCookies } from '../cookies/cookies.scanner';
-import { analyzeHttp } from '../http/http.scanner';
-import { analyzeTechnology } from '../technology/technology.scanner';
-import { analyzeExposure } from '../exposure/exposure.scanner';
-import { runAnalyzer } from './scanner.utils';
+import { executeAnalyzers } from './analyzer-runner';
+import { emitAuditEvent } from '../../shared/events';
 import { buildFindings } from '../../modules/findings/findings.service';
 import { calculateRisk } from '../../risk-engine/risk.engine';
 import { saveAuditResults } from '../../modules/audits/audits.repository';
@@ -48,6 +43,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
   // Estado inicial del análisis visible para el usuario.
   await prisma.audit.update({ where: { id: auditId }, data: { status: 'RUNNING' } });
+  emitAuditEvent(auditId, 'RUNNING');
 
   try {
     const targetUrl = new URL(audit.url);
@@ -75,60 +71,16 @@ export async function runAudit(auditId: string): Promise<void> {
     };
 
     // ---- Fase 2: ejecución aislada de cada analizador --------------------
-    const results = [
-      runAnalyzer('tls', (ctx) => {
-        // ¿La variante HTTP redirige automáticamente hacia HTTPS?
-        const plainHttpRedirectsToHttps =
-          ctx.plainHttp?.redirects.some(
-            (r) => r.status >= 300 && r.status < 400 && r.location.startsWith('https://')
-          ) ?? false;
-        return analyzeTls({
-          isHttpsTarget: ctx.isHttpsTarget,
-          domain: ctx.domain,
-          pageFetchedOk: Boolean(ctx.page?.ok),
-          plainHttpRedirectsToHttps,
-          tls: ctx.tls
-        });
-      }, context),
-
-      runAnalyzer('headers', (ctx) => {
-        // Sin respuesta HTTP no hay cabeceras que analizar: reportar
-        // "ausente" sería un falso positivo (RF-031).
-        if (!ctx.page?.status) throw new Error('objetivo sin respuesta HTTP');
-        return analyzeHeaders({ headers: ctx.page.headers, isHttpsTarget: ctx.isHttpsTarget });
-      }, context),
-
-      runAnalyzer('cookies', (ctx) => {
-        if (!ctx.page?.status) throw new Error('objetivo sin respuesta HTTP');
-        return analyzeCookies({
-          setCookies: ctx.page.setCookies,
-          isHttpsTarget: ctx.isHttpsTarget
-        });
-      }, context),
-
-      runAnalyzer('http', (ctx) => analyzeHttp({ page: ctx.page, isHttpsTarget: ctx.isHttpsTarget }), context),
-
-      runAnalyzer('technology', (ctx) => {
-        if (!ctx.page?.status) throw new Error('objetivo sin respuesta HTTP');
-        return analyzeTechnology({
-          headers: ctx.page.headers,
-          setCookieNames: ctx.page.setCookies.map((c) => c.name),
-          body: ctx.page.body
-        });
-      }, context),
-
-      runAnalyzer('exposure', (ctx) => {
-        if (!ctx.page?.status) throw new Error('objetivo sin respuesta HTTP');
-        return analyzeExposure({
-          headers: ctx.page.headers,
-          body: ctx.page.body,
-          probes: ctx.probes
-        });
-      }, context)
-    ];
+    // El runner decide entre hilo principal (secuencial) o pool de hilos.
+    // En ambos caminos cada analizador falla de forma aislada (RF-032).
+    const results = await executeAnalyzers(context);
 
     // ---- Fase 3: hallazgos estructurados y evaluación de riesgo ----------
-    const drafts = results.flatMap((r) => r.findings);
+    // Si ni siquiera hubo respuesta HTTP no se generan hallazgos: reportar
+    // cabeceras/TLS "ausentes" sobre un objetivo caído sería un falso
+    // positivo (RF-031). Sí se conservan los errores por analizador.
+    const totalFailure = !page || (!page.ok && !page.status);
+    const drafts = totalFailure ? [] : results.flatMap((r) => r.findings);
     const findings = buildFindings(drafts);
     const risk = calculateRisk(findings);
 
@@ -146,8 +98,7 @@ export async function runAudit(auditId: string): Promise<void> {
     }
 
     // Si ni siquiera hubo respuesta HTTP el análisis se marca como fallido,
-    // conservando igualmente los resultados parciales obtenidos (RF-031).
-    const totalFailure = !page || (!page.ok && !page.status);
+    // conservando los resultados crudos parciales pero sin hallazgos.
     const status = totalFailure ? 'FAILED' : 'COMPLETED';
     const errorMessage = totalFailure
       ? 'El objetivo no respondió al análisis. Verifique la URL y la disponibilidad del sitio.'
@@ -171,6 +122,11 @@ export async function runAudit(auditId: string): Promise<void> {
       score: risk.score,
       findings: findings.length
     });
+    emitAuditEvent(auditId, status, {
+      score: risk.score,
+      findings: findings.length,
+      analyzerErrors: analyzerErrors.length
+    });
   } catch (error) {
     // Fallo inesperado del motor: se registra y la auditoría queda FAILED.
     logger.error(`Auditoría ${auditId} falló inesperadamente`, error);
@@ -184,6 +140,9 @@ export async function runAudit(auditId: string): Promise<void> {
         }
       })
       .catch(() => undefined);
+    emitAuditEvent(auditId, 'FAILED', {
+      reason: error instanceof Error ? error.message : 'error interno'
+    });
   }
 }
 

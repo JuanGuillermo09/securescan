@@ -1,0 +1,572 @@
+============================================================================
+SECURESCAN WEB · PROTOTIPO DISTRIBUIDO
+REPORTE DE PRUEBAS DE CARGA Y ROBUSTEZ
+============================================================================
+Fecha de ejecución : 2026-10-31
+Rama               : prototipo-distribuido
+Alcance            : PostgreSQL + cola de trabajos + 1..3 réplicas del backend
+                     + NGINX + objetivo simulado (target-sim).
+Modo simple        : intacto (SQLite, un proceso, npm run dev/start, Render).
+
+Todas las cifras de este informe provienen de ejecuciones reales registradas
+en loadtest/results/. No se estimaron ni inventaron valores. Cuando una prueba
+tuvo varianza o una limitación, se indica expresamente.
+
+============================================================================
+1. ENTORNO DE EJECUCIÓN
+============================================================================
+
+Host
+  CPU              : AMD Ryzen 5 5600GT with Radeon Graphics
+  Núcleos          : 6 físicos / 12 lógicos
+  RAM              : 29.952.696.320 bytes = 27,9 GiB
+  Sistema          : Microsoft Windows 11 Pro, versión 10.0.26300, 64 bits
+  Node (host)      : v24.21.0
+  npm (host)       : 11.19.0
+  Docker           : 29.6.2 (build dfc4efb)
+  Docker Compose   : v5.3.1
+  Git Bash         : usado para loadtest/chaos-kill-node.sh
+
+Contenedores
+  Backend          : Node v22.23.4 (imagen node:22-slim)
+  PostgreSQL       : 16.14 (postgres:16-alpine)
+  NGINX            : 1.27.5 (nginx:1.27-alpine)
+  Objetivo         : target-sim, Node 22, puerto 8081
+  Límite de memoria visible para Docker Desktop: 13,6 GiB
+  (el host tiene 27,9 GiB; Docker Desktop/WSL está limitado a 13,6 GiB)
+
+Topología usada
+  - NGINX en http://localhost:8080 (proxy a api-1..api-3 en la red Docker).
+  - api-1 siempre activo; api-2 y api-3 bajo el perfil "scale".
+  - PostgreSQL y target-sim en la misma red Docker.
+  - Backend con QUEUE_MODE=true, ANALYZER_POOL_SIZE=3, JOB_POLL_MS=250,
+    SCAN_TIMEOUT_MS=5000, EXAMPLE_AUDIT_ENABLED=false.
+  - target-sim es el ÚNICO objetivo escaneado; no se hicieron pruebas contra
+    sitios de terceros.
+
+Verificación de reparto
+  12 peticiones consecutivas a /api/health devolvieron 4 X-Node-Id de api-1,
+  4 de api-2 y 4 de api-3. Una comprobación posterior de 6 peticiones dio
+  api-1, api-2, api-3, api-1, api-2, api-3. El balanceo de NGINX funciona.
+
+============================================================================
+2. QUÉ SE CONSTRUYÓ Y QUÉ SE CORRIGIÓ
+============================================================================
+
+2.1 Modo distribuido opcional
+  - backend/src/config/env.ts: banderas QUEUE_MODE, NODE_ID, JOB_CONCURRENCY,
+    JOB_POLL_MS, JOB_HEARTBEAT_MS, JOB_STALE_SECONDS, ANALYZER_POOL_SIZE,
+    ANALYZER_TIMEOUT_MS, FAIL_ANALYZER, TRUST_PROXY. Todos con valores por
+    defecto que conservan el modo simple.
+  - backend/prisma/schema.postgres.prisma: esquema PostgreSQL con la tabla
+    ScanJob (cola persistente), además de las tablas de la V1.
+  - backend/src/modules/jobs/: repositorio con SQL crudo y
+    FOR UPDATE SKIP LOCKED, reclamo atómico, latido, reasignación de trabajos
+    huérfanos, límite de intentos y estado DEAD; worker de consumo con cierre
+    ordenado; job-notifier.ts para despertar al consumidor local al encolar.
+  - backend/src/modules/audits/audits.service.ts: encola cuando
+    QUEUE_MODE=true y avisa al worker local; en modo simple ejecuta como la V1.
+  - backend/src/scanners/core/: registro de analizadores, pool de hilos
+    (worker_threads) con timeout, reinicio y fallback; ANALYZER_POOL_SIZE=0
+    conserva la ejecución secuencial de la V1; el motor emite eventos de
+    progreso y no persiste hallazgos si el objetivo falla por completo.
+  - backend/src/shared/events.ts: eventos de progreso/estado.
+  - X-Node-Id en las respuestas y datos de cola/nodo en /api/health.
+  - TRUST_PROXY y cuotas RATE_LIMIT_MAX / RATE_LIMIT_READ_MAX elevadas para
+    que el rate limit no enmascarara las pruebas.
+
+2.2 Contenedores e infraestructura
+  - backend/Dockerfile multi-stage y backend/.dockerignore.
+  - docker-compose.distributed.yml: postgres, migrate, api-1 (siempre),
+    api-2/api-3 (perfil scale), target-sim y nginx; healthchecks y espera a
+    que migrate termine.
+  - infra/nginx.3nodes.conf e infra/nginx.1node.conf: upstreams, keepalive 128,
+    proxy timeouts y cabeceras.
+  - tools/target-sim/server.js: objetivo simulado con endpoints de
+    configuración (latency, jitter, failRate, down) y /__reset.
+  - loadtest/: read.js (autocannon, medianas y desglose de errores),
+    audits.js (creación y seguimiento por ID), chaos-kill-node.sh (SIGKILL),
+    common.js y README.md.
+  - docs/PROTOTIPO_DISTRIBUIDO.md: uso y variables.
+
+2.3 Correcciones relevantes
+  - EXAMPLE_AUDIT_ENABLED=false en el compose distribuido para no generar
+    auditorías a example.com durante las pruebas.
+  - El backend escanea la URL que recibe en cada auditoría; el harness pasa
+    http://target-sim:8081 y el contenedor la resuelve por DNS de Docker.
+  - SCAN_TIMEOUT_MS=5000 para que E6 (latencia 8000 ms) falle por timeout.
+  - Si el objetivo no responde en absoluto, la auditoría queda FAILED y no se
+    guardan hallazgos (evita falsos positivos); se conservan resultados crudos
+    parciales y errores de analizador.
+  - El cierre ordenado (SIGTERM) está implementado para liberar los trabajos;
+    la prueba de caos usa SIGKILL a propósito para forzar la reasignación por
+    latido vencido.
+  - audits.js consulta cada auditoría por ID porque GET /api/audits devuelve
+    como máximo 50 filas y E5 crea 120. Sin esta corrección el harness se
+    quedaba esperando; la corrida final de E5 terminó limpia.
+  - Tras recrear contenedores de API hay que reiniciar NGINX para que
+    re-resuelva las IPs de los upstreams. Está documentado en los comandos.
+
+2.4 Modo simple preservado
+  - Sin QUEUE_MODE el backend usa SQLite y ejecuta la auditoría en el mismo
+    proceso, como la V1.
+  - npx tsc --noEmit: OK.
+  - npm test: 4 suites, 33/33 tests OK.
+  - No se modificó el flujo de npm run dev / npm run start ni el despliegue
+    en Render.
+
+============================================================================
+3. E1–E4 · CARGA DE LECTURA (GET /api/audits)
+============================================================================
+
+Comando base (desde loadtest/):
+  node read.js --connections N --duration 30 --repeats 3
+
+Cada escenario se ejecutó con 3 repeticiones de 30 s; la tabla muestra la
+mediana de las 3 repeticiones. "Tiempo medio de auditoría" se midió aparte con
+30 auditorías (no durante la prueba de lectura) y se indica en la nota.
+
++--------+--------+------------+----------+--------+---------+---------+---------------------------+--------------------------+
+| Esc.   | Nodos  | Conexiones | Req/s    | p50    | p97.5   | p99     | % errores                 | Tiempo medio auditoría   |
++--------+--------+------------+----------+--------+---------+---------+---------------------------+--------------------------+
+| E1     | 1      | 10         | 444,64   | 23 ms  | 50 ms   | 56 ms   | 0,01 % (5 red/0 HTTP/0 TO)| 0,69 s                   |
+| E2     | 1      | 50         | 462,67   | 104 ms | 140 ms  | 152 ms  | 0,00 %                    | 0,69 s                   |
+| E3     | 3      | 50         | 854,94   | 55 ms  | 89 ms   | 101 ms  | 0,00 %                    | 0,25 s                   |
+| E4     | 3      | 100        | 849,00   | 112 ms | 164 ms  | 192 ms  | 0,00 %                    | 0,25 s                   |
++--------+--------+------------+----------+--------+---------+---------+---------------------------+--------------------------+
+
+Notas:
+  - E1: 40.103 peticiones totales, 5 errores de red, 0 HTTP no-2xx, 0 timeouts.
+    El 0,01 % es el redondeo de 5/40.103 = 0,0125 %.
+  - E1/E2 se ejecutaron con 1 nodo (api-1) y pool 3. El tiempo medio de
+    auditoría (0,69 s) es el de 30 auditorías en ese mismo nodo.
+  - E3/E4 se ejecutaron con 3 nodos y pool 3. El tiempo medio de auditoría
+    (0,25 s) es el de 30 auditorías en el mismo clúster (comparación
+    secuencial pool 3).
+  - E3/E4 usan la pasada final consistente. Antes de la comparación de pool se
+    obtuvo una pasada más rápida: E3 1.137,97 req/s y E4 1.152,07 req/s. Al
+    repetir el mismo binario y la misma configuración tras varias pruebas
+    sostenidas se obtuvo 854,94 y 849,00 req/s. La diferencia se atribuye a
+    varianza térmica/orden y al estado del host, no al código. Se documenta en
+    la sección 8.
+  - A 50 conexiones el sistema ya está cerca de saturar; a 100 conexiones no
+    sube el throughput y la latencia se duplica (p50 55→112 ms, p99 101→192 ms).
+    Es el principal cuello de botella observado (sección 7.3).
+
+============================================================================
+4. E5–E7 · ROBUSTEZ
+============================================================================
+
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+| Prueba | Esperado                                    | Observado                                                    | ¿Cumple?|
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+| E5   | Matar un nodo en plena carga; ninguna        | 120/120 auditorías COMPLETED; cola 120 DONE; 0 RUNNING con    | Sí      |
+|      | auditoría se pierde; los trabajos huérfanos  | más de 60 s; 4 trabajos huérfanos reasignados a PENDING y     |         |
+|      | se reasignan; no quedan RUNNING viejas.      | reclamados con attempts=2; total 42,91 s; 8,18 s de media;    |         |
+|      |                                               | 167,81 auditorías/min.                                        |         |
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+| E6a  | Objetivo con latencia 8000 ms > timeout      | 10/10 FAILED; total 6,22 s; media 5,08 s; 0 hallazgos en las  | Sí      |
+|      | de 5000 ms: las auditorías deben fallar.     | auditorías fallidas.                                          |         |
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+| E6b  | Objetivo caído (down=1): las auditorías      | 10/10 FAILED; total 3,17 s; media 2,57 s; 0 hallazgos; 4      | Sí      |
+|      | deben fallar sin falsos positivos y con      | errores de analizador (headers, cookies, technology,          |         |
+|      | mensaje claro.                               | exposure) y mensaje: "El objetivo no respondió al análisis.   |         |
+|      |                                               | Verifique la URL y la disponibilidad del sitio."              |         |
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+| E7   | Un analizador falla a propósito; la         | 10/10 COMPLETED; 9 hallazgos (SEC-001..SEC-009); 1 error de   | Sí      |
+|      | auditoría debe completarse, registrar el     | analizador: "Fallo simulado del analizador headers            |         |
+|      | error y conservar los demás hallazgos.       | (FAIL_ANALYZER)". Los hallazgos de headers no aparecen.       |         |
++------+-----------------------------------------------+--------------------------------------------------------------+---------+
+
+Detalle E5
+  - Escenario: target-sim con latency=1000 ms; 120 auditorías creadas con
+    concurrencia 10; a los 5 s se mata api-2 con SIGKILL
+    (docker compose kill -s KILL api-2); se esperan 20 s; se levanta api-2;
+    se espera a que terminen todas.
+  - Evidencia de reasignación (loadtest/results/E5_chaos.txt):
+      [WARN] Trabajo huérfano ... reasignado a PENDING (auditoría ..., intento 1)
+      [INFO] Trabajo ... reclamado por api-1 {"attempt":2}
+    4 trabajos con attempts=2, todos DONE. No se perdió ninguna auditoría.
+  - Consultas finales: ScanJob DONE=120; Audit COMPLETED=120;
+    auditorías RUNNING con más de 60 s = 0.
+
+Detalle E6
+  - E6a: POST /__config?latency=8000&jitter=0&failRate=0&down=0;
+    10 auditorías, concurrencia 5. Todas FAILED en ~5,08 s (timeout de 5 s).
+  - E6b: POST /__config?latency=0&jitter=0&failRate=0&down=1;
+    10 auditorías, concurrencia 5. Todas FAILED en ~2,57 s.
+  - En total quedaron 20 auditorías FAILED (10 de latencia + 10 de caída) y
+    0 hallazgos asociados a auditorías FAILED. Se comprobó el detalle de la
+    última auditoría caída: findings=0, analyzerErrors=4 y el mensaje indicado.
+  - Tras la prueba se ejecutó POST /__reset (latency=0, down=false).
+
+Detalle E7
+  - FAIL_ANALYZER=headers en api-1, api-2 y api-3; se recrearon los
+    contenedores y se reinició NGINX; 10 auditorías, concurrencia 5.
+  - Resultado: 10/10 COMPLETED, 9 hallazgos, 1 analyzerError de headers.
+  - Después de la prueba se restauró FAIL_ANALYZER vacío y se recrearon los
+    contenedores con pool 3 para dejar el entorno limpio.
+
+============================================================================
+5. COMPARACIÓN POOL DE HILOS vs SIN POOL
+============================================================================
+
+Configuración:
+  - Pool 0: ANALYZER_POOL_SIZE=0 → analizadores secuenciales en el hilo
+    principal (comportamiento de la V1).
+  - Pool 3: ANALYZER_POOL_SIZE=3 → pool de 3 worker_threads por réplica.
+  - Mismo binario, mismo compose, mismo host; se recrearon los contenedores
+    entre configuraciones y se reinició NGINX.
+
+Lectura (3 nodos, 30 s × 3 repeticiones, mediana)
++----------------+------------+------------+------------+
+| Métrica        | Pool 0     | Pool 3     | Diferencia |
++----------------+------------+------------+------------+
+| E3 req/s       | 845,10     | 854,94     | +1,2 %     |
+| E3 p50         | 57 ms      | 55 ms      | -2 ms      |
+| E3 p97.5       | 92 ms      | 89 ms      | -3 ms      |
+| E3 p99         | 106 ms     | 101 ms     | -5 ms      |
+| E3 % errores   | 0,00 %     | 0,00 %     | =          |
+| E4 req/s       | 867,04     | 849,00     | -2,1 %     |
+| E4 p50         | 110 ms     | 112 ms     | +2 ms      |
+| E4 p97.5       | 159 ms     | 164 ms     | +5 ms      |
+| E4 p99         | 184 ms     | 192 ms     | +8 ms      |
+| E4 % errores   | 0,00 %     | 0,00 %     | =          |
++----------------+------------+------------+------------+
+
+Auditorías completas (3 nodos, 30 auditorías, concurrencia 10)
++----------------------------+------------+------------+------------+
+| Métrica                    | Pool 0     | Pool 3     | Diferencia |
++----------------------------+------------+------------+------------+
+| Total                      | 1,39 s     | 1,23 s     | -11,5 %    |
+| Auditorías/min             | 1.295,90   | 1.469,39   | +13,4 %    |
+| Tiempo medio por auditoría | 0,30 s     | 0,25 s     | -16,7 %    |
+| Completadas / fallidas     | 30 / 0     | 30 / 0     | =          |
++----------------------------+------------+------------+------------+
+
+Conclusión honesta:
+  - El pool 3 NO mejora el throughput de lecturas: las diferencias (+1,2 % y
+    -2,1 %) están dentro del ruido térmico/orden. Las pruebas de lectura no
+    ejecutan analizadores, así que no hay razón mecánica para que el pool
+    cambie ese throughput.
+  - El pool 3 SÍ mejora modestamente la latencia de auditorías completas:
+    0,30 s → 0,25 s de media y +13,4 % de auditorías/min en la comparación
+    secuencial. Es una mejora pequeña porque los analizadores actuales son
+    ligeros.
+  - Una corrida anterior de pool 3 dio 0,18 s de media y 1.502,5 auditorías/min
+    (fue la primera medición oficial, en un estado térmico más favorable). No
+    se usa para la comparación secuencial, pero se documenta.
+  - Se mantiene ANALYZER_POOL_SIZE=3 como valor por defecto del compose
+    distribuido porque no perjudica las lecturas y mejora algo las auditorías.
+    ANALYZER_POOL_SIZE=0 sigue disponible y conserva el comportamiento V1.
+
+============================================================================
+6. CPU Y MEMORIA POR CONTENEDOR
+============================================================================
+
+Metodología: docker stats --no-stream --format
+"{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}" tomado una vez a mitad de
+cada escenario de lectura. Es una muestra puntual, no un perfil continuo. El
+CPU % de Docker puede superar 100 % (200 % = 2 hilos lógicos). Se excluye el
+contenedor ajeno cyberguard-db, que no forma parte del prototipo.
+
+E1 · 1 nodo, 10 conexiones
+  api-1       242,22 %   375,0 MiB / 13,6 GiB   (2,69 %)
+  nginx        14,41 %    26,41 MiB / 13,6 GiB  (0,19 %)
+  postgres     62,02 %    68,78 MiB / 13,6 GiB  (0,49 %)
+  target-sim    0,00 %    14,54 MiB / 13,6 GiB  (0,10 %)
+
+E2 · 1 nodo, 50 conexiones
+  api-1       255,53 %   420,6 MiB / 13,6 GiB   (3,02 %)
+  nginx        15,14 %    27,2 MiB / 13,6 GiB   (0,20 %)
+  postgres     67,60 %    68,55 MiB / 13,6 GiB  (0,49 %)
+  target-sim    0,01 %    14,54 MiB / 13,6 GiB  (0,10 %)
+
+E3 · 3 nodos, 50 conexiones, pool 3
+  api-1       207,70 %   355,8 MiB / 13,6 GiB   (2,56 %)
+  api-2       200,36 %   357,9 MiB / 13,6 GiB   (2,57 %)
+  api-3       196,35 %   353,1 MiB / 13,6 GiB   (2,54 %)
+  nginx        43,54 %    47,78 MiB / 13,6 GiB  (0,34 %)
+  postgres    126,53 %   127,5 MiB / 13,6 GiB   (0,92 %)
+  target-sim    0,00 %    14,03 MiB / 13,6 GiB  (0,10 %)
+
+E4 · 3 nodos, 100 conexiones, pool 3
+  api-1       209,10 %   372,5 MiB / 13,6 GiB   (2,68 %)
+  api-2       194,76 %   370,7 MiB / 13,6 GiB   (2,66 %)
+  api-3       212,40 %   368,8 MiB / 13,6 GiB   (2,65 %)
+  nginx        43,15 %    48,68 MiB / 13,6 GiB  (0,35 %)
+  postgres    120,50 %   128,7 MiB / 13,6 GiB   (0,92 %)
+  target-sim    0,02 %    14,03 MiB / 13,6 GiB  (0,10 %)
+
+Lectura:
+  - En E3/E4 los tres backends suman ~600 % (≈6 hilos lógicos), Postgres
+    ~120–127 % y NGINX ~43 %. El host tiene 6 núcleos físicos / 12 lógicos,
+    así que la carga agregada roza la saturación de los núcleos físicos.
+    Ese es el límite real del prototipo en este host.
+  - La memoria no es el cuello de botella: en E4 los tres backends usan
+    ~1,11 GiB en total, NGINX ~49 MiB, Postgres ~129 MiB y target-sim ~14 MiB;
+    en conjunto ~1,30 GiB de los 13,6 GiB visibles.
+  - target-sim marca ~0 % en las pruebas de lectura porque no se ejecutan
+    auditorías; solo atiende el escaneo cuando hay auditorías. En E5/E6 sí
+    recibe carga, pero no se muestreó docker stats en esas pruebas.
+
+============================================================================
+7. CUELLOS DE BOTELLA Y AJUSTES APLICADOS
+============================================================================
+
+7.1 NGINX sin keepalive hacia los upstreams
+  Síntoma: NGINX abría una conexión nueva al backend por cada petición; el
+  costo de establecimiento y el consumo de CPU de NGINX limitaban el
+  throughput.
+
+  Ajuste aplicado: keepalive 128 en los bloques upstream de
+  infra/nginx.3nodes.conf e infra/nginx.1node.conf.
+
+  Antes (calibración 100 conexiones, 10 s, 1 repetición, sin keepalive):
+    req/s = 1.199,00 · p50 = 78 ms · p97.5 = 125 ms · p99 = 165 ms
+    errores = 0,00 % (0/11.990)
+    NGINX CPU = 73,60 %
+    Una segunda medición "antes" (el restart de NGINX había fallado, así que
+    seguía sin keepalive) dio 1.452,80 req/s · p50 64 ms · p97.5 108 ms ·
+    p99 118 ms · 0,00 % (0/14.528). Rango antes: 1.199–1.453 req/s.
+
+  Después (mismo escenario, con keepalive):
+    req/s = 2.036,60 · p50 = 47 ms · p97.5 = 69 ms · p99 = 82 ms
+    errores = 0,00 % (0/20.365)
+    NGINX CPU = 68,14 % (menos CPU que antes, con más throughput)
+
+  Resultado: +40 % a +70 % de throughput según la referencia "antes", y
+  p50 ~40 % y p99 ~50 % menores. Se mantiene el ajuste.
+  Limitación: es una calibración de 10 s y 1 repetición; la primera medición
+  "antes" tuvo target-sim al 21,65 % (posible auditoría residual) y la de
+  "después" al 0 %. Para un número definitivo habría que repetir con más
+  repeticiones y el sistema en reposo.
+
+7.2 Latencia de sondeo de la cola (1000 ms)
+  Síntoma: una auditoría encolada podía esperar hasta 1 s antes de que un
+  worker la reclamara; con 30 auditorías y concurrencia de workers 12
+  (4 por nodo) se veían varias "olas" de espera y el tiempo medio se inflaba.
+
+  Ajuste aplicado: aviso local inmediato al encolar (job-notifier.ts) +
+  JOB_POLL_MS=250 como respaldo para trabajos encolados por otras réplicas.
+
+  Antes (3 nodos, pool 3, JOB_POLL_MS=1000, 30 auditorías, concurrencia 10):
+    total = 3,13 s · 575,45 auditorías/min · media = 1,80 s
+  Después (3 nodos, pool 3, aviso + 250 ms, 30 auditorías, concurrencia 10):
+    total = 1,31 s · 1.371,95 auditorías/min · media = 0,39 s
+  Corrida posterior con el mismo ajuste:
+    total = 1,20 s · 1.502,50 auditorías/min · media = 0,18 s
+  Comparación secuencial pool 3 (misma sesión de pruebas): media = 0,25 s.
+
+  Resultado: el tiempo medio baja de 1,80 s a 0,39 s (–78 %) y las
+  auditorías/min suben de 575 a 1.372 (+138 %) en la comparación directa.
+  Se mantiene el ajuste.
+
+7.3 Cuello de botella observado sin ajuste: CPU/PostgreSQL
+  A 50 conexiones (E3) el clúster da 854,94 req/s; a 100 conexiones (E4) da
+  849,00 req/s: no hay ganancia de throughput y la latencia se duplica
+  (p50 55→112 ms, p99 101→192 ms). Los tres backends consumen ~200 % cada uno
+  (≈6 hilos lógicos), Postgres ~120–129 % y NGINX ~43 %. La carga agregada
+  roza la saturación de los 6 núcleos físicos del host.
+
+  Ajuste propuesto (NO aplicado, fuera del alcance del prototipo):
+    - Más réplicas o más CPU física para repartir la carga.
+    - Índice compuesto en Audit(userId, startedAt) para el listado.
+    - Caché de la lista de auditorías o paginación explícita.
+  No se aplicó porque requiere cambiar la infraestructura o el alcance y no
+  era necesario para validar la arquitectura distribuida.
+
+7.4 Primera pasada de E3/E4 vs pasada final
+  La primera pasada de E3/E4 dio 1.137,97 y 1.152,07 req/s. La pasada final,
+  con el mismo binario y la misma configuración, dio 854,94 y 849,00 req/s.
+  La comparación secuencial pool 0 vs pool 3 (845,10 vs 854,94 en E3; 867,04 vs
+  849,00 en E4) confirma que la diferencia no es del pool. Se atribuye a
+  varianza térmica/orden y al estado del host tras varias pruebas sostenidas.
+  En la tabla de la sección 3 se usa la pasada final consistente; la primera
+  se conserva como evidencia de la variabilidad.
+
+============================================================================
+8. LIMITACIONES PENDIENTES
+============================================================================
+
+1. Varianza térmica/orden: el host es de escritorio y Docker Desktop comparte
+   CPU con el generador de carga. La primera pasada de E3/E4 fue ~25–35 % más
+   rápida que la final; se reporta la final y se documenta la primera. No es
+   un benchmark certificado.
+2. docker stats es una muestra puntual a mitad de cada escenario, no un
+   perfil continuo; los picos de CPU/memoria pueden ser mayores.
+3. Docker Desktop limita la memoria visible a 13,6 GiB, aunque el host tiene
+   27,9 GiB. Las cifras de memoria son relativas a ese límite.
+4. El generador de carga (autocannon) corre en el mismo host y compite por
+   CPU con los contenedores.
+5. La prueba de lectura solo ejerce GET /api/audits; no mide escrituras,
+   mezcla de lectura/escritura ni el frontend.
+6. No hay terminación TLS/HTTPS en NGINX para estas pruebas: el tráfico es
+   HTTP en localhost:8080 y el objetivo simulado es HTTP. No se midió
+   handshake TLS real.
+7. No se probó failover de PostgreSQL ni particiones de red; E5 solo mata un
+   nodo de API con SIGKILL. La base de datos es un único contenedor.
+8. No se hizo una prueba de soak larga: las pruebas de lectura son 30 s × 3
+   por escenario y E5 dura ~43 s. No se observó degradación en ese tiempo,
+   pero no se puede afirmar comportamiento en horas.
+9. El pool usa worker_threads, no procesos separados. Analizadores pesados
+   seguirían compitiendo por la CPU del mismo contenedor; la mejora del pool
+   es modesta con los analizadores actuales.
+10. La cola tiene estado DEAD y límite de intentos, pero no hay alertas ni
+    métricas exportadas más allá de /api/health. No se probó el camino DEAD.
+11. target-sim es un mock controlado; sitios reales tienen TLS, redirecciones,
+    WAF, CDN y latencias variables. Los resultados no se extrapolan
+    directamente a producción.
+12. Las pruebas de 1 nodo usan el mismo host y la misma VM de Docker, no una
+    máquina separada.
+13. EXAMPLE_AUDIT_ENABLED=false en el compose distribuido para no escanear
+    example.com. En modo simple el valor por defecto sigue siendo true.
+14. El harness audits.js se corrigió para consultar por ID porque el listado
+    devuelve máximo 50 filas; la primera corrida de E5 se quedó esperando por
+    esa causa. La corrida final de E5 es la válida y terminó limpia.
+15. Los números provienen de una sola máquina y de una corrida por escenario
+    (3 repeticiones en lectura). No constituyen una certificación de
+    rendimiento.
+
+============================================================================
+9. COMANDOS EXACTOS DE REPRODUCCIÓN
+============================================================================
+
+Requisitos: Docker Desktop, Node 24 en el host, Git Bash (para E5), y estar
+en la raíz del repositorio F:\Proyectos\SecureScan.
+Los comandos están en PowerShell salvo donde se indique Git Bash.
+
+9.1 Arranque limpio del stack de 3 nodos
+  docker compose -f docker-compose.distributed.yml --profile scale down -v
+  docker compose -f docker-compose.distributed.yml --profile scale up -d --build
+  docker compose -f docker-compose.distributed.yml --profile scale ps
+  curl.exe http://localhost:8080/api/health
+
+  El servicio migrate aplica el esquema PostgreSQL y termina; las APIs esperan
+  a que termine. La respuesta de health incluye node, queueMode y ok=true.
+
+9.2 Reparto de nodos
+  for ($i=0; $i -lt 12; $i++) {
+    (Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/health).Headers['X-Node-Id']
+  }
+
+9.3 Pruebas de lectura E1–E4
+  cd loadtest
+
+  # 3 nodos (E3 y E4)
+  node read.js --connections 50  --duration 30 --repeats 3
+  node read.js --connections 100 --duration 30 --repeats 3
+
+  # 1 nodo (E1 y E2): detener api-2/api-3 y cambiar NGINX a 1 nodo
+  cd ..
+  docker compose -f docker-compose.distributed.yml --profile scale stop api-2 api-3
+  $env:NGINX_CONF='./infra/nginx.1node.conf'
+  docker compose -f docker-compose.distributed.yml up -d --force-recreate nginx
+  cd loadtest
+  node read.js --connections 10 --duration 30 --repeats 3
+  node read.js --connections 50 --duration 30 --repeats 3
+
+  # Volver a 3 nodos
+  cd ..
+  $env:NGINX_CONF='./infra/nginx.3nodes.conf'
+  docker compose -f docker-compose.distributed.yml --profile scale start api-2 api-3
+  docker compose -f docker-compose.distributed.yml up -d --force-recreate nginx
+
+  # Muestreo de recursos durante una prueba
+  docker stats --no-stream --format "{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}"
+
+9.4 Auditorías completas (30 en 1 nodo y 30 en 3 nodos)
+  cd loadtest
+  $env:TARGET_URL='http://target-sim:8081'
+  node audits.js --count 30 --concurrency 10
+
+  # Para 1 nodo, aplicar antes el cambio de NGINX de 9.3 y repetir.
+
+9.5 E5 · caos: SIGKILL de api-2 con 120 auditorías en vuelo
+  # Desde la raíz del repo, con Git Bash:
+  cd ..
+  bash loadtest/chaos-kill-node.sh api-2
+
+  # Alternativa en PowerShell:
+  & 'C:\Program Files\Git\bin\bash.exe' loadtest/chaos-kill-node.sh api-2
+
+  El script configura target-sim con latency=1000, lanza 120 auditorías,
+  mata api-2 con SIGKILL a los 5 s, espera 20 s, levanta api-2, espera a que
+  terminen y consulta ScanJob/Audit y los logs de reasignación.
+
+9.6 E6 · latencia alta y objetivo caído
+  curl.exe -s -X POST "http://localhost:8081/__config?latency=8000&jitter=0&failRate=0&down=0"
+  cd loadtest
+  $env:TARGET_URL='http://target-sim:8081'
+  node audits.js --count 10 --concurrency 5
+
+  curl.exe -s -X POST "http://localhost:8081/__config?latency=0&jitter=0&failRate=0&down=1"
+  node audits.js --count 10 --concurrency 5
+  curl.exe -s -X POST "http://localhost:8081/__reset"
+
+  # Comprobación de que las fallidas no dejaron hallazgos:
+  # (login y GET /api/audits/:id; ver 9.8)
+
+9.7 E7 · fallo simulado de un analizador
+  cd ..
+  $env:FAIL_ANALYZER='headers'
+  $env:ANALYZER_POOL_SIZE='3'
+  docker compose -f docker-compose.distributed.yml --profile scale up -d --force-recreate api-1 api-2 api-3
+  docker compose -f docker-compose.distributed.yml restart nginx
+  cd loadtest
+  $env:TARGET_URL='http://target-sim:8081'
+  node audits.js --count 10 --concurrency 5
+
+  # Restaurar el entorno limpio:
+  cd ..
+  $env:FAIL_ANALYZER=''
+  $env:ANALYZER_POOL_SIZE='3'
+  docker compose -f docker-compose.distributed.yml --profile scale up -d --force-recreate api-1 api-2 api-3
+  docker compose -f docker-compose.distributed.yml restart nginx
+
+9.8 Comprobaciones de detalle y base de datos
+  $login = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/auth/login `
+    -ContentType 'application/json' `
+    -Body '{"email":"loadtest@securescan.local","password":"loadtest-password-123"}'
+  $h = @{ Authorization = "Bearer $($login.token)" }
+  $list = Invoke-RestMethod -Uri http://localhost:8080/api/audits -Headers $h
+  $d = Invoke-RestMethod -Uri "http://localhost:8080/api/audits/$($list[0].id)" -Headers $h
+  $d.status; $d.findings.Count; $d.analyzerErrors; $d.errorMessage
+
+  # Consultas SQL (desde la raíz):
+@'
+SELECT "status", COUNT(*) FROM "ScanJob" GROUP BY "status" ORDER BY "status";
+SELECT "status", COUNT(*) FROM "Audit" GROUP BY "status" ORDER BY "status";
+SELECT "id", "auditId", "status", "workerId", "attempts"
+  FROM "ScanJob" WHERE "attempts" > 1 ORDER BY "attempts" DESC;
+SELECT COUNT(*) AS hallazgos_en_fallidas
+  FROM "Finding" f JOIN "Audit" a ON a."id" = f."auditId"
+  WHERE a."status" = 'FAILED';
+'@ | docker compose -f docker-compose.distributed.yml exec -T postgres psql -U securescan -d securescan
+
+9.9 Comparación pool 0 vs pool 3 (desde la raíz)
+  $env:ANALYZER_POOL_SIZE='0'
+  docker compose -f docker-compose.distributed.yml --profile scale up -d --force-recreate api-1 api-2 api-3
+  docker compose -f docker-compose.distributed.yml restart nginx
+  # repetir 9.4 (30 auditorías) y las pruebas E3/E4 de 9.3
+
+  $env:ANALYZER_POOL_SIZE='3'
+  docker compose -f docker-compose.distributed.yml --profile scale up -d --force-recreate api-1 api-2 api-3
+  docker compose -f docker-compose.distributed.yml restart nginx
+  # repetir 9.4 y las pruebas E3/E4 de 9.3
+
+9.10 Validación del modo simple y tests
+  cd backend
+  npx tsc --noEmit
+  npm test
+
+  Resultado obtenido: tsc sin errores; 4 suites y 33/33 tests OK.
+
+9.11 Parada del stack
+  cd ..
+  docker compose -f docker-compose.distributed.yml --profile scale down
+  # Añadir -v si se quiere borrar también el volumen de PostgreSQL.
+
+============================================================================
+FIN DEL REPORTE
+============================================================================

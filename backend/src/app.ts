@@ -18,6 +18,7 @@ import { findingsRouter } from './modules/findings/findings.routes';
 import { technologiesRouter } from './modules/technologies/technologies.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
 import { errorHandlerMiddleware } from './shared/middleware/error-handler.middleware';
+import { env } from './config/env';
 
 /**
  * Crea y configura la aplicación Express.
@@ -27,12 +28,31 @@ export function createApp(): Express {
 
   // Oculta la tecnología del servidor (cabecera X-Powered-By).
   app.disable('x-powered-by');
+
+  // Modo distribuido: confía en el proxy inverso para obtener la IP real
+  // del cliente (rate limiting) y el protocolo original (RNF-006).
+  if (env.trustProxy > 0) {
+    app.set('trust proxy', env.trustProxy);
+  }
+
   app.use(cors({ origin: true }));
   app.use(express.json({ limit: '100kb' }));
 
+  // Identifica la réplica que atendió la petición. Permite comprobar el
+  // reparto de carga de NGINX y depurar el modo distribuido.
+  app.use((_req: Request, res: Response, next) => {
+    res.setHeader('X-Node-Id', env.nodeId);
+    next();
+  });
+
   /** Comprobación rápida de salud del servicio. */
   app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ ok: true, service: 'securescan-backend' });
+    res.json({
+      ok: true,
+      service: 'securescan-backend',
+      node: env.nodeId,
+      queueMode: env.queueMode
+    });
   });
 
   // Módulos de dominio. El rate limiting del scanner se aplica dentro del

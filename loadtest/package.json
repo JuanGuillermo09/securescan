@@ -1,0 +1,13 @@
+{
+  "name": "securescan-loadtest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pruebas de carga y robustez del prototipo distribuido de SecureScan",
+  "scripts": {
+    "read": "node read.js",
+    "audits": "node audits.js"
+  },
+  "dependencies": {
+    "autocannon": "^7.15.0"
+  }
+}
