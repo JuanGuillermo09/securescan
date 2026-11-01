@@ -134,7 +134,7 @@ Para ejecutar el proyecto localmente se requiere:
 * Angular CLI.
 * Git.
 
-El proyecto **no requiere Docker** ni instalar base de datos (SQLite por defecto).
+El modo simple **no requiere Docker** ni instalar base de datos (SQLite por defecto). Docker es opcional y solo se usa para el prototipo distribuido (ver [Modo distribuido opcional con Docker](#-modo-distribuido-opcional-con-docker)).
 
 ---
 
@@ -233,6 +233,74 @@ npm start
 
 ---
 
+## 🐳 Modo distribuido opcional con Docker
+
+El modo simple (SQLite, un proceso, `npm run dev` / `npm start`) sigue siendo el
+predeterminado y es el que usa Render. Docker solo es necesario para probar el
+**prototipo distribuido**: PostgreSQL + cola de trabajos + 1–3 réplicas del
+backend + NGINX + objetivo simulado.
+
+> Este compose es para pruebas locales. No se usa en Render.
+
+### Arrancar 3 nodos
+
+```bash
+docker compose -f docker-compose.distributed.yml --profile scale up -d --build
+docker compose -f docker-compose.distributed.yml --profile scale ps
+curl http://localhost:8080/api/health
+```
+
+El servicio `migrate` aplica el esquema PostgreSQL y termina. La API queda en
+`http://localhost:8080` y el objetivo simulado en `http://localhost:8081`.
+La respuesta de salud incluye `"queueMode": true` y el nodo que atendió la
+petición en la cabecera `X-Node-Id`.
+
+### Ver logs y parar
+
+```bash
+docker compose -f docker-compose.distributed.yml logs -f api-1
+docker compose -f docker-compose.distributed.yml --profile scale down
+# Añadir -v para borrar también el volumen de PostgreSQL.
+```
+
+### Pasar a 1 nodo y volver a 3
+
+```bash
+# 1 nodo
+docker compose -f docker-compose.distributed.yml --profile scale stop api-2 api-3
+export NGINX_CONF=./infra/nginx.1node.conf
+docker compose -f docker-compose.distributed.yml up -d --force-recreate nginx
+
+# Volver a 3 nodos
+export NGINX_CONF=./infra/nginx.3nodes.conf
+docker compose -f docker-compose.distributed.yml --profile scale start api-2 api-3
+docker compose -f docker-compose.distributed.yml up -d --force-recreate nginx
+```
+
+En PowerShell, `export NGINX_CONF=...` se escribe
+`$env:NGINX_CONF='./infra/nginx.1node.conf'`.
+
+> Después de recrear los contenedores `api-*`, reinicia NGINX para que
+> re-resuelva las IPs de los upstreams:
+> `docker compose -f docker-compose.distributed.yml restart nginx`.
+
+### Variables útiles
+
+| Variable | Valor por defecto | Uso |
+|---|---|---|
+| `ANALYZER_POOL_SIZE` | `3` | `0` = ejecución secuencial (V1); `>0` = pool de hilos |
+| `JOB_POLL_MS` | `250` | respaldo de sondeo de la cola |
+| `SCAN_TIMEOUT_MS` | `5000` | timeout de escaneo (prueba E6) |
+| `FAIL_ANALYZER` | vacío | fuerza el fallo de un analizador (prueba E7) |
+| `EXAMPLE_AUDIT_ENABLED` | `false` en el compose | evita escanear example.com |
+
+El detalle de la arquitectura, las pruebas E1–E7 y las limitaciones está en
+[`docs/PROTOTIPO_DISTRIBUIDO.md`](docs/PROTOTIPO_DISTRIBUIDO.md) y
+[`REPORTE_PRUEBAS.txt`](REPORTE_PRUEBAS.txt). Las pruebas de carga solo deben
+apuntar al objetivo propio `target-sim`.
+
+---
+
 ## 🚀 Despliegue (Render)
 
 El proyecto está preparado para desplegarse como **un único servicio** en [Render](https://render.com): el Express sirve tanto el API como el frontend.
@@ -259,6 +327,12 @@ git push
 | Environment | `JWT_SECRET` (valor largo y aleatorio) |
 
 Render provee HTTPS automáticamente y detecta el puerto mediante la variable `PORT`.
+
+> **Modo distribuido:** el compose de Docker es solo para pruebas locales.
+> Render sigue desplegando el modo simple con `npm start`; no requiere
+> PostgreSQL ni NGINX. Si el servicio de Render está conectado a la rama
+> `main`, los commits en `prototipo-distribuido` no disparan despliegues:
+> Render solo redespliega cuando se hace push a la rama configurada.
 
 **⚠️ Limitación del plan gratuito:** el disco es efímero; la base SQLite se reinicia en cada redeploy. Para persistencia real, usar disco pagado o migrar a PostgreSQL.
 
