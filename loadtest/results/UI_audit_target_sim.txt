@@ -1,0 +1,142 @@
+EVIDENCIA DE AUDITORÍA DESDE LA INTERFAZ WEB
+============================================
+
+Fecha de captura: 2026-11-01, 20:27 (hora local, según la página)
+Interfaz usada: http://localhost:8080
+Cuenta creada: prueba.ui.20261101.2020@example.com
+Contraseña: no se guarda en este archivo.
+
+AUDITORÍA
+---------
+ID: cmvykx24b0002rz0v2ycy0941
+URL objetivo: http://target-sim:8081/
+Estado: Completada
+Iniciada: 01/11/2026, 20:27
+Finalizada: 01/11/2026, 20:27
+
+SECURITY SCORE
+--------------
+0 / 100
+Nota: F
+
+DISTRIBUCIÓN DE RIESGOS
+-----------------------
+14 hallazgos
+Critical: 2
+High: 1
+Medium: 3
+Low: 6
+Informational: 2
+
+TECNOLOGÍAS DETECTADAS
+----------------------
+Apache httpd 2.4.49 (Servidor web)
+PHP 7.4.3 (Lenguaje)
+WordPress 5.8 (CMS)
+
+HALLAZGOS (14)
+--------------
+1. [Critical] SEC-001 Posible vulnerabilidad conocida en Apache httpd 2.4.49 (CVE-2021-41773)
+2. [Critical] SEC-002 Posible vulnerabilidad conocida en Apache httpd 2.4.49 (CVE-2021-42013)
+3. [High] SEC-003 El objetivo se sirve sobre HTTP sin cifrar
+4. [Medium] SEC-004 Content-Security-Policy ausente
+5. [Medium] SEC-005 Cookie de sesión "PHPSESSID" sin HttpOnly
+6. [Medium] SEC-006 Posible vulnerabilidad conocida en WordPress 5.8 (CVE-2024-4439)
+7. [Low] SEC-007 X-Content-Type-Options ausente
+8. [Low] SEC-008 Referrer-Policy ausente
+9. [Low] SEC-009 Cookie "PHPSESSID" sin atributo SameSite
+10. [Low] SEC-010 Versión del servidor web divulgada
+11. [Low] SEC-011 Tecnología del servidor divulgada mediante X-Powered-By
+12. [Low] SEC-012 Protección contra clickjacking ausente
+13. [Informational] SEC-013 Permissions-Policy ausente
+14. [Informational] SEC-014 Metadato generator con información técnica
+
+TEXTO COMPLETO DE LA PÁGINA
+----------------------------
+SecureScan Web
+Prueba UI
+Nueva auditoría
+Historial
+Salir
+target-sim
+http://target-sim:8081/
+
+Iniciada: 01/11/2026, 20:27 · Finalizada: 01/11/2026, 20:27
+
+Completada
+SECURITY SCORE
+0
+Nota F
+Ver hallazgos
+⬇ Descargar informe PDF
+DISTRIBUCIÓN DE RIESGOS
+
+14 hallazgos
+
+Critical
+2
+High
+1
+Medium
+3
+Low
+6
+Informational
+2
+TECNOLOGÍAS DETECTADAS
+Apache httpd
+2.4.49
+Servidor web
+PHP
+7.4.3
+Lenguaje
+WordPress
+5.8
+CMS
+Hallazgos (14)
+
+Ordenados de mayor a menor riesgo. Haz clic para ver el detalle.
+
+Critical
+SEC-001 Posible vulnerabilidad conocida en Apache httpd 2.4.49 (CVE-2021-41773)
++
+Critical
+SEC-002 Posible vulnerabilidad conocida en Apache httpd 2.4.49 (CVE-2021-42013)
++
+High
+SEC-003 El objetivo se sirve sobre HTTP sin cifrar
++
+Medium
+SEC-004 Content-Security-Policy ausente
++
+Medium
+SEC-005 Cookie de sesión "PHPSESSID" sin HttpOnly
++
+Medium
+SEC-006 Posible vulnerabilidad conocida en WordPress 5.8 (CVE-2024-4439)
++
+Low
+SEC-007 X-Content-Type-Options ausente
++
+Low
+SEC-008 Referrer-Policy ausente
++
+Low
+SEC-009 Cookie "PHPSESSID" sin atributo SameSite
++
+Low
+SEC-010 Versión del servidor web divulgada
++
+Low
+SEC-011 Tecnología del servidor divulgada mediante X-Powered-By
++
+Low
+SEC-012 Protección contra clickjacking ausente
++
+Informational
+SEC-013 Permissions-Policy ausente
++
+Informational
+SEC-014 Metadato generator con información técnica
++
+SecureScan Web · Uso responsable: analice únicamente aplicaciones para las que tenga autorización.
