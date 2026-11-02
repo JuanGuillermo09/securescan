@@ -1,0 +1,21 @@
+Fecha: 2026-11-01T20:18:54.4528051-05:00
+Objetivo: http://localhost:8080/api/health
+Comando: 12 x Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/health
+
+peticion 1 : X-Node-Id=api-1 body.node=api-1 queueMode=True
+peticion 2 : X-Node-Id=api-2 body.node=api-2 queueMode=True
+peticion 3 : X-Node-Id=api-3 body.node=api-3 queueMode=True
+peticion 4 : X-Node-Id=api-1 body.node=api-1 queueMode=True
+peticion 5 : X-Node-Id=api-2 body.node=api-2 queueMode=True
+peticion 6 : X-Node-Id=api-3 body.node=api-3 queueMode=True
+peticion 7 : X-Node-Id=api-1 body.node=api-1 queueMode=True
+peticion 8 : X-Node-Id=api-2 body.node=api-2 queueMode=True
+peticion 9 : X-Node-Id=api-3 body.node=api-3 queueMode=True
+peticion 10 : X-Node-Id=api-1 body.node=api-1 queueMode=True
+peticion 11 : X-Node-Id=api-2 body.node=api-2 queueMode=True
+peticion 12 : X-Node-Id=api-3 body.node=api-3 queueMode=True
+
+Resumen:
+  api-1 = 4
+  api-2 = 4
+  api-3 = 4

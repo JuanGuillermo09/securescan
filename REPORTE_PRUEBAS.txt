@@ -48,6 +48,9 @@ Verificación de reparto
   12 peticiones consecutivas a /api/health devolvieron 4 X-Node-Id de api-1,
   4 de api-2 y 4 de api-3. Una comprobación posterior de 6 peticiones dio
   api-1, api-2, api-3, api-1, api-2, api-3. El balanceo de NGINX funciona.
+  Evidencia cruda: loadtest/results/X_node_id.txt (re-ejecución del
+  2026-11-01; 4/4/4). Script reproducible:
+  loadtest/evidence-x-node-id.ps1.
 
 ============================================================================
 2. QUÉ SE CONSTRUYÓ Y QUÉ SE CORRIGIÓ
@@ -449,6 +452,9 @@ Los comandos están en PowerShell salvo donde se indique Git Bash.
   for ($i=0; $i -lt 12; $i++) {
     (Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/health).Headers['X-Node-Id']
   }
+
+  # O con el script que guarda la evidencia en loadtest/results/X_node_id.txt:
+  powershell -ExecutionPolicy Bypass -File loadtest/evidence-x-node-id.ps1
 
 9.3 Pruebas de lectura E1–E4
   cd loadtest
